@@ -56,7 +56,26 @@ export function logicalDate(date = now()) {
 
 export function day(key = dayKey()) {
   if (!state.days[key]) state.days[key] = { mode: null, done: [], focus: "", cycles: 0 };
+  if (!state.days[key].ops) state.days[key].ops = []; // ajustes pontuais do assistente
   return state.days[key];
+}
+
+// A chave da API do Claude fica separada do estado e só neste aparelho.
+const API_KEY = "rotina.apiKey";
+
+export function getApiKey() {
+  try {
+    return localStorage.getItem(API_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+export function setApiKey(value) {
+  try {
+    if (value) localStorage.setItem(API_KEY, value);
+    else localStorage.removeItem(API_KEY);
+  } catch {}
 }
 
 /** Lê um dia sem criá-lo (para o histórico). */

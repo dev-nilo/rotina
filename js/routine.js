@@ -151,6 +151,42 @@ export function buildSchedule(settings, weekday = 1) {
   return out;
 }
 
+/**
+ * Aplica os ajustes pontuais de um dia (feitos pelo assistente) sobre a agenda base.
+ * - add_event: insere um compromisso; os blocos que ele cobre são encurtados ou somem.
+ * - replace_block: troca título e passos de um bloco, mantendo o horário.
+ * - remove_block: tira um bloco do dia.
+ * Itens alterados ganham `changed: true` para a tela destacar.
+ */
+export function applyOps(schedule, ops = [], wake) {
+  let out = schedule.map((b) => ({ ...b }));
+  for (const op of ops) {
+    if (op.action === "replace_block") {
+      out = out.map((b) => (b.id === op.block_id ? { ...b, title: op.title, steps: op.steps, changed: true } : b));
+    } else if (op.action === "remove_block") {
+      out = out.filter((b) => b.id !== op.block_id);
+    } else if (op.action === "add_event") {
+      const start = minutesBetween(wake, parseClock(op.start));
+      let end = minutesBetween(wake, parseClock(op.end));
+      if (end <= start) end = start + 60;
+      out = out.flatMap((b) => {
+        if (b.end <= start || b.start >= end) return [b];
+        const parts = [];
+        if (b.start < start) parts.push({ ...b, end: start });
+        if (b.end > end) parts.push({ ...b, id: parts.length ? `${b.id}~2` : b.id, start: end });
+        return parts;
+      });
+      out.push({ id: op.id, start, end, title: op.title, steps: op.steps, changed: true, event: true });
+    }
+  }
+  return out.sort((a, b) => a.start - b.start);
+}
+
+/** Dia da semana (0 = domingo) de uma chave "yyyy-mm-dd". */
+export function weekdayOf(key) {
+  return new Date(`${key}T12:00:00`).getDay();
+}
+
 /** Duração do bloco de execução; usado para avisar quando o desligamento está cedo demais. */
 export function execMinutes(schedule) {
   const b = schedule.find((b) => b.id === "exec");
