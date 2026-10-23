@@ -1,5 +1,5 @@
 // Cache offline: tenta a rede primeiro (para pegar atualizações) e cai no cache sem internet.
-const CACHE = "rotina-v4";
+const CACHE = "rotina-v5";
 const FILES = [
   "./",
   "index.html",

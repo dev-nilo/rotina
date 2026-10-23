@@ -83,14 +83,14 @@ export function peekDay(key) {
   return state.days[key];
 }
 
-export function toggleDone(id) {
-  const d = day();
+export function toggleDone(id, key = dayKey()) {
+  const d = day(key);
   const i = d.done.indexOf(id);
   if (i >= 0) d.done.splice(i, 1);
   else d.done.push(id);
   save();
 }
 
-export function isDone(id) {
-  return day().done.includes(id);
+export function isDone(id, key = dayKey()) {
+  return peekDay(key)?.done.includes(id) ?? false;
 }

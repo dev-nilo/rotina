@@ -16,6 +16,14 @@ let expanded = null;
 /** Conversa aberta com o assistente (some ao fechar). */
 const assistant = { open: false, input: "", loading: false, error: "", reply: "", pending: [], history: [] };
 
+/** Editor manual de um bloco ou compromisso. `id` vazio = novo compromisso. */
+const editor = { open: false, key: "", id: "", title: "", start: "", end: "", steps: "", error: "" };
+
+/** Dia que está na tela; null = hoje. */
+let viewKey = null;
+const viewing = () => viewKey ?? dayKey();
+const isToday = () => viewing() === dayKey();
+
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 /** Agenda de hoje, já com os ajustes do assistente. */
 const schedule = () => scheduleFor(dayKey());
@@ -36,12 +44,12 @@ const icon = (name) => `<svg viewBox="0 0 24 24" class="icon" aria-hidden="true"
 const stepId = (block, i) => `${block.id}:${i}`;
 
 /** Um bloco está feito quando foi marcado inteiro ou quando todos os passos foram marcados. */
-function blockDone(block) {
-  return isDone(block.id) || (block.steps.length > 0 && block.steps.every((_, i) => isDone(stepId(block, i))));
+function blockDone(block, key = viewing()) {
+  return isDone(block.id, key) || (block.steps.length > 0 && block.steps.every((_, i) => isDone(stepId(block, i), key)));
 }
 
 function toggleBlock(block) {
-  const d = day();
+  const d = day(viewing());
   if (blockDone(block)) {
     const ids = new Set([block.id, ...block.steps.map((_, i) => stepId(block, i))]);
     d.done = d.done.filter((id) => !ids.has(id));
@@ -57,12 +65,44 @@ function checkButton(action, id, done, label) {
   return `<button class="check ${done ? "done" : ""}" data-action="${action}" data-id="${id}" aria-label="${done ? "Desmarcar" : "Marcar"} ${esc(label)}">${done ? icon("check") : ""}</button>`;
 }
 
+const keyDate = (key) => new Date(`${key}T12:00:00`);
+const shiftKey = (key, days) => {
+  const d = keyDate(key);
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+function dayLabel(key) {
+  const today = dayKey();
+  if (key === today) return "Hoje";
+  if (key === shiftKey(today, 1)) return "Amanhã";
+  if (key === shiftKey(today, -1)) return "Ontem";
+  const s = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric" }).format(keyDate(key));
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 function header() {
-  const s = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric" }).format(logicalDate());
   return `<header class="top">
-      <h1>${esc(s.charAt(0).toUpperCase() + s.slice(1))}</h1>
+      <h1>${esc(dayLabel(viewing()))}</h1>
       <button class="ai-button" data-action="ai-open">${icon("spark")}<span>Ajustar</span></button>
-    </header>`;
+    </header>
+    ${dayStrip()}`;
+}
+
+/** Uma semana para trás e duas para frente; o dia na tela fica destacado. */
+function dayStrip() {
+  const today = dayKey();
+  const weekday = new Intl.DateTimeFormat("pt-BR", { weekday: "short" });
+  const items = [];
+  for (let i = -7; i <= 14; i++) {
+    const key = shiftKey(today, i);
+    const d = keyDate(key);
+    const cls = [key === viewing() ? "on" : "", key === today ? "today" : "", peekDay(key)?.ops?.length ? "has-ops" : ""].join(" ");
+    items.push(`<button class="day ${cls}" data-action="day-go" data-key="${key}">
+        <small>${weekday.format(d).replace(".", "")}</small><strong>${d.getDate()}</strong>
+      </button>`);
+  }
+  return `<nav class="strip" aria-label="Dias">${items.join("")}</nav>`;
 }
 
 /** Lembretes de uma linha: fim de semana e "nunca falhe duas vezes". */
@@ -82,7 +122,7 @@ function chips() {
 function focusField() {
   return `<section class="focus">
       <span class="eyebrow">Única Coisa</span>
-      <textarea rows="1" data-input="focus" placeholder="Toque para definir">${esc(day().focus)}</textarea>
+      <textarea rows="1" data-input="focus" placeholder="Toque para definir">${esc(peekDay(viewing())?.focus ?? "")}</textarea>
     </section>`;
 }
 
@@ -146,15 +186,17 @@ function nowCard(sched) {
     </section>`;
 }
 
-/** O dia inteiro numa lista compacta. Toque num bloco para ver os passos. */
+/** O dia inteiro numa lista compacta. Toque num bloco para ver os passos e editar. */
 function dayList(sched) {
   const wake = state.settings.wake;
-  const mo = momentAt(sched, now(), wake);
+  const key = viewing();
+  const today = dayKey();
+  const mo = key === today ? momentAt(sched, now(), wake) : null;
 
   const rows = sched.map((b) => {
     const done = blockDone(b);
-    const isNow = mo.kind === "block" && mo.block.id === b.id;
-    const past = mo.m >= b.end && !isNow;
+    const isNow = mo?.kind === "block" && mo.block.id === b.id;
+    const past = mo ? mo.m >= b.end && !isNow : key < today;
     const open = expanded === b.id;
     return `<div class="row ${isNow ? "is-now" : ""} ${done ? "is-done" : ""} ${past && !done ? "is-past" : ""}">
         <button class="row-main" data-action="expand" data-id="${b.id}" aria-expanded="${open}">
@@ -162,17 +204,24 @@ function dayList(sched) {
           <span class="row-title">${esc(b.title)}${b.changed ? `<span class="tag">ajustado</span>` : ""}</span>
         </button>
         ${checkButton("toggle-block", b.id, done, b.title)}
-        ${open ? `<div class="row-steps">${b.steps.map(esc).join(" · ")}</div>` : ""}
+        ${open ? `<div class="row-steps">
+            ${b.steps.length ? `<span>${b.steps.map(esc).join(" · ")}</span>` : ""}
+            <span class="row-actions">
+              <button class="mini" data-action="edit-open" data-id="${b.id}">Editar</button>
+              <button class="mini" data-action="block-remove" data-id="${b.id}">Remover</button>
+            </span>
+          </div>` : ""}
       </div>`;
   });
 
-  const doneCount = sched.filter(blockDone).length;
-  const undo = day().ops.length
-    ? `<button class="link small-link" data-action="ai-undo">Desfazer ajustes de hoje</button>`
+  const doneCount = sched.filter((b) => blockDone(b)).length;
+  const undo = peekDay(key)?.ops?.length
+    ? `<button class="link small-link" data-action="ai-undo">Desfazer ajustes deste dia</button>`
     : "";
   return `<section>
       <div class="section-head"><span class="eyebrow">Dia</span><span class="eyebrow num">${doneCount}/${sched.length}</span></div>
       ${rows.join("")}
+      <button class="add-row" data-action="edit-new">+ Compromisso</button>
       ${undo}
     </section>`;
 }
@@ -181,7 +230,7 @@ function anchorsList() {
   return `<section>
       <div class="section-head"><span class="eyebrow">3 Âncoras</span></div>
       ${ANCHORS.map((a) => {
-        const done = isDone(a.id);
+        const done = isDone(a.id, viewing());
         return `<div class="row anchor ${done ? "is-done" : ""}">
             <div class="row-main static">
               <span class="row-title">${esc(a.title)}</span>
@@ -219,7 +268,7 @@ function segmented(key, options) {
 // MARK: - Telas
 
 function chooser() {
-  return `<div class="chooser">
+  return `${dayStrip()}<div class="chooser">
       <h1>Como vai ser hoje?</h1>
       <button class="choice" data-action="mode" data-mode="structured">
         <strong>Estruturado</strong>
@@ -232,7 +281,17 @@ function chooser() {
     </div>`;
 }
 
+/** Outro dia (passado ou futuro): só a Única Coisa e a lista, sem o cartão Agora. */
+function otherDayScreen() {
+  const key = viewing();
+  const d = peekDay(key);
+  const body = d?.mode === "chaotic" ? anchorsList() : dayList(scheduleFor(key));
+  return `${header()}${focusField()}${body}
+      <button class="link" data-action="day-go" data-key="${dayKey()}">Voltar para hoje</button>`;
+}
+
 function todayScreen() {
+  if (!isToday()) return otherDayScreen();
   const d = day();
   if (!d.mode) return chooser();
   const sched = schedule();
@@ -360,6 +419,95 @@ function assistantSheet() {
     </section>`;
 }
 
+// MARK: - Edição manual
+
+function editorSheet() {
+  if (!editor.open) return "";
+  return `<div class="sheet-backdrop" data-action="edit-close"></div>
+    <section class="sheet" role="dialog" aria-label="Editar">
+      <div class="sheet-head">
+        <strong>${editor.id ? "Editar bloco" : "Novo compromisso"}</strong>
+        <button class="x" data-action="edit-close" aria-label="Fechar">×</button>
+      </div>
+      <p class="muted small">${esc(dayLabel(editor.key))}</p>
+      <form data-form="edit" class="edit-form">
+        <label class="ef"><span>Nome</span><input name="title" value="${esc(editor.title)}" autocomplete="off" required></label>
+        <div class="ef-row">
+          <label class="ef"><span>Início</span><input type="time" name="start" value="${editor.start}" required></label>
+          <label class="ef"><span>Fim</span><input type="time" name="end" value="${editor.end}" required></label>
+        </div>
+        <label class="ef"><span>Passos, um por linha</span><textarea name="steps" rows="3">${esc(editor.steps)}</textarea></label>
+        ${editor.error ? `<p class="ai-error">${esc(editor.error)}</p>` : ""}
+        <div class="controls">
+          <button class="btn primary">Salvar</button>
+          <button type="button" class="btn" data-action="edit-close">Cancelar</button>
+        </div>
+      </form>
+    </section>`;
+}
+
+const newEventId = () => `evt-${Date.now().toString(36)}`;
+
+function openEditor(id) {
+  const key = viewing();
+  const b = id ? scheduleFor(key).find((b) => b.id === id) : null;
+  const wake = state.settings.wake;
+  Object.assign(editor, {
+    open: true, key, id: b ? b.id : "", error: "",
+    title: b?.title ?? "",
+    start: b ? clock(b.start, wake) : "",
+    end: b ? clock(b.end, wake) : "",
+    steps: b?.steps.join("\n") ?? "",
+  });
+}
+
+/**
+ * Grava a edição como ajustes do dia (os mesmos do assistente):
+ * compromisso novo → add_event; compromisso existente → atualiza o próprio ajuste;
+ * bloco da rotina com o mesmo horário → replace_block; com outro horário → vira compromisso.
+ */
+function saveEditor(form) {
+  const title = form.title.value.trim();
+  const start = form.start.value;
+  const end = form.end.value;
+  const steps = form.steps.value.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 5);
+  if (!title || !start || !end) {
+    editor.error = "Preencha nome, início e fim.";
+    return false;
+  }
+
+  const key = editor.key;
+  const ops = day(key).ops;
+  const own = ops.find((op) => op.action === "add_event" && op.id === editor.id);
+  if (own) {
+    Object.assign(own, { title, start, end, steps });
+  } else if (!editor.id) {
+    ops.push({ action: "add_event", id: newEventId(), date: key, start, end, title, steps });
+  } else {
+    const wake = state.settings.wake;
+    const b = scheduleFor(key).find((b) => b.id === editor.id);
+    if (b && clock(b.start, wake) === start && clock(b.end, wake) === end) {
+      ops.push({ action: "replace_block", date: key, block_id: editor.id, title, steps });
+    } else {
+      ops.push({ action: "remove_block", date: key, block_id: editor.id });
+      ops.push({ action: "add_event", id: newEventId(), date: key, start, end, title, steps });
+    }
+  }
+  save();
+  editor.open = false;
+  return true;
+}
+
+function removeBlock(id) {
+  const key = viewing();
+  const d = day(key);
+  const before = d.ops.length;
+  d.ops = d.ops.filter((op) => !(op.action === "add_event" && op.id === id));
+  if (d.ops.length === before) d.ops.push({ action: "remove_block", date: key, block_id: id });
+  expanded = null;
+  save();
+}
+
 function resetAssistant() {
   Object.assign(assistant, { open: false, input: "", loading: false, error: "", reply: "", pending: [], history: [] });
 }
@@ -397,7 +545,11 @@ function tabBar() {
 
 function render() {
   const screen = tab === "today" ? todayScreen() : tab === "why" ? whyScreen() : settingsScreen();
-  app.innerHTML = `<main class="screen">${screen}</main>${tabBar()}${assistantSheet()}`;
+  app.innerHTML = `<main class="screen">${screen}</main>${tabBar()}${assistantSheet()}${editorSheet()}`;
+  // Centraliza o dia escolhido na faixa de dias (sem rolar a página).
+  const strip = app.querySelector(".strip");
+  const on = strip?.querySelector(".day.on");
+  if (strip && on) strip.scrollLeft = on.offsetLeft - strip.clientWidth / 2 + on.offsetWidth / 2;
   // Cada tela tem a sua cor de fundo; a barra de status do iPhone acompanha.
   document.body.dataset.screen = tab === "today" && !day().mode ? "chooser" : tab;
   const page = getComputedStyle(document.body).getPropertyValue("--page").trim();
@@ -436,11 +588,27 @@ app.addEventListener("click", (e) => {
       break;
     case "toggle":
     case "step":
-      toggleDone(id);
+      toggleDone(id, viewing());
       if (navigator.vibrate) navigator.vibrate(10);
       break;
+    case "day-go":
+      viewKey = el.dataset.key === dayKey() ? null : el.dataset.key;
+      expanded = null;
+      break;
+    case "edit-open":
+      openEditor(id);
+      break;
+    case "edit-new":
+      openEditor("");
+      break;
+    case "edit-close":
+      editor.open = false;
+      break;
+    case "block-remove":
+      removeBlock(id);
+      break;
     case "toggle-block": {
-      const block = schedule().find((b) => b.id === id);
+      const block = scheduleFor(viewing()).find((b) => b.id === id);
       if (block) toggleBlock(block);
       if (navigator.vibrate) navigator.vibrate(10);
       break;
@@ -498,7 +666,7 @@ app.addEventListener("click", (e) => {
       assistant.reply = "";
       break;
     case "ai-undo":
-      day().ops = [];
+      day(viewing()).ops = [];
       break;
     case "remove-key":
       setApiKey("");
@@ -510,8 +678,9 @@ app.addEventListener("click", (e) => {
 
 app.addEventListener("input", (e) => {
   if (e.target.dataset.input === "ai") assistant.input = e.target.value;
+  if (e.target.form?.dataset.form === "edit") editor[e.target.name] = e.target.value;
   if (e.target.dataset.input === "focus") {
-    day().focus = e.target.value;
+    day(viewing()).focus = e.target.value;
     save();
     autosize();
   }
@@ -531,6 +700,13 @@ app.addEventListener("change", (e) => {
 });
 
 app.addEventListener("submit", (e) => {
+  const editForm = e.target.closest("[data-form=edit]");
+  if (editForm) {
+    e.preventDefault();
+    saveEditor(editForm);
+    render();
+    return;
+  }
   const aiForm = e.target.closest("[data-form=ai]");
   if (aiForm) {
     e.preventDefault();

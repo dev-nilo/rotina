@@ -183,7 +183,52 @@ section { margin-bottom: 16px; }
 .row-main { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 14px; padding: 6px 0; transition: transform 0.1s; }
 .time { width: 44px; flex: none; font-size: 15px; font-weight: 800; color: var(--row-muted); font-variant-numeric: tabular-nums; }
 .row-title { font-weight: 700; font-size: 17px; }
-.row-steps { flex-basis: 100%; padding: 2px 44px 10px 58px; font-size: 14px; font-weight: 500; color: var(--row-muted); }
+.row-steps {
+  flex-basis: 100%; display: flex; flex-direction: column; gap: 10px;
+  padding: 2px 44px 10px 58px; font-size: 14px; font-weight: 500; color: var(--row-muted);
+}
+.row-actions { display: flex; gap: 6px; }
+.mini {
+  padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 800;
+  background: var(--track); color: var(--on-row);
+}
+.row.is-now .mini { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.add-row {
+  display: block; width: 100%; padding: 14px; border-radius: 999px; text-align: center;
+  border: 2px dashed var(--on-page); color: var(--on-page); font-weight: 800; font-size: 15px;
+}
+
+/* Faixa de dias */
+.strip {
+  position: relative; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+  margin: -4px -16px 16px; padding: 2px 16px;
+  scroll-snap-type: x proximity;
+}
+.strip::-webkit-scrollbar { display: none; }
+.day {
+  flex: none; width: 46px; padding: 8px 0; border-radius: 999px; scroll-snap-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  color: var(--on-page); position: relative;
+}
+.day small { font-size: 11px; font-weight: 800; text-transform: uppercase; opacity: 0.6; }
+.day strong { font-size: 18px; font-weight: 800; }
+.day.today { box-shadow: inset 0 0 0 2px var(--on-page); }
+.day.on { background: var(--on-page); color: var(--page); }
+.day.on small { opacity: 0.8; }
+.day.has-ops::after {
+  content: ""; position: absolute; bottom: 4px; width: 5px; height: 5px; border-radius: 50%;
+  background: currentColor;
+}
+
+/* Editor */
+.edit-form { display: flex; flex-direction: column; gap: 12px; }
+.ef { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
+.ef span { font-size: 13px; font-weight: 800; color: var(--row-muted); }
+.ef input, .ef textarea {
+  width: 100%; border: 0; outline: 0; resize: none; border-radius: 16px;
+  background: var(--track); padding: 12px 14px; font-size: 17px; font-weight: 600;
+}
+.ef-row { display: flex; gap: 10px; }
 .row.is-now { background: var(--ink); color: #fff; }
 .row.is-now .time { color: var(--lime); }
 .row.is-now .row-steps { color: #c9cdd6; }
