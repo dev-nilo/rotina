@@ -1,105 +1,38 @@
-// Dados da rotina (portados de swiftui-referencia/Rotina.swiftpm/Routine.swift)
-// e o cálculo da agenda a partir dos ajustes.
+// Dados da rotina e o cálculo da agenda a partir dos ajustes.
+// Cada bloco é só uma lista de passos curtos: escanear e fazer.
+// O porquê de cada coisa fica na aba Por quê (PRINCIPLES).
 // Todos os horários da agenda são minutos contados a partir do despertar.
 
-export const LOADS = {
-  none: { label: "Nula", level: 0 },
-  low: { label: "Baixa", level: 1 },
-  mediumLow: { label: "Média-baixa", level: 1 },
-  medium: { label: "Média", level: 2 },
-  mediumHigh: { label: "Média-alta", level: 3 },
-  veryHigh: { label: "Muito alta", level: 4 },
-  physical: { label: "Física", level: 3 },
+export const BLOCKS = {
+  wake: { title: "Despertar", steps: ["Levantar sem soneca", "500 ml de água", "10 min de sol", "Mobilidade"] },
+  miracle: { title: "Manhã", steps: ["5 min de silêncio", "5 min de leitura", "Definir a Única Coisa"] },
+  food: { title: "Café da manhã", steps: ["Proteína e gordura boa", "Café só no Deep Work"] },
+  deep: { title: "Deep Work", steps: ["Celular em outro cômodo", "5 min: lembrar de memória", "Só a Única Coisa"] },
+  triage: { title: "Mensagens", steps: ["E-mails e mensagens", "Pendências rápidas"] },
+  light: { title: "Tarefas leves", steps: ["Ajustes e revisões", "Burocracia rápida"] },
+  lunch: { title: "Almoço", steps: ["Refeição limpa", "15 min de caminhada sem fone"] },
+  valley: { title: "Operacional", steps: ["Reuniões", "Tarefas mecânicas"] },
+  exec: { title: "Execução", steps: ["Executar o que foi planejado", "Anotar 3 prioridades de amanhã"] },
+  train: { title: "Treino", steps: [] },
+  tribe: { title: "Vida pessoal", steps: ["Banho", "Jantar sem tela", "Conversa ou hobby"] },
+  sunset: { title: "Desacelerar", steps: ["Luz baixa", "Sem telas de trabalho", "Leitura leve"] },
 };
 
-export const BLOCKS = {
-  wake: {
-    title: "Despertar e ativação", load: "low",
-    action: "Sem soneca. Empilhe os hábitos: depois de levantar, 500 ml de água; depois da água, 10 min de luz solar direta e mobilidade articular. Nada de celular.",
-    why: "Corta a melatonina, dispara o pico saudável de cortisol e sincroniza o relógio biológico. Cada hábito vira o gatilho do próximo.",
-    source: "Cronobiologia · Sapiens · Hábitos Atômicos",
-  },
-  miracle: {
-    title: "Milagre da Manhã realista", load: "mediumLow",
-    action: "5 min de silêncio ou respiração, 5 min de leitura, 10 min definindo a Única Coisa: o que, feito hoje, torna todo o resto mais fácil ou desnecessário?",
-    why: "Começar o dia ativo e contemplativo, não reagindo às notificações dos outros.",
-    source: "O Milagre da Manhã · A Única Coisa · A Sociedade do Cansaço",
-  },
-  food: {
-    title: "Nutrição e preparação", load: "low",
-    action: "Café da manhã com proteína de verdade e gordura boa. Cafeína só a partir do início do Deep Work.",
-    why: "Evita picos e quedas de glicose que sabotam o córtex pré-frontal, e proteína em toda refeição preserva músculo com o passar dos anos.",
-    source: "Behave · Outlive",
-  },
-  deep: {
-    title: "Deep Work", load: "veryHigh",
-    action: "Só a Única Coisa. Abra com 5 min de recuperação ativa (escreva de memória o que já sabe do problema) e trabalhe no limite da sua habilidade, buscando feedback. Celular em outro cômodo.",
-    why: "Deixa (café + mesa limpa) → Rotina (monotarefa no pico do CPF) → Recompensa (pausa e caminhada curta). São essas horas de prática deliberada que se acumulam em maestria.",
-    source: "Behave · O Poder do Hábito · Ultra-aprendizado · Outliers",
-  },
-  triage: {
-    title: "Triagem e comunicação", load: "medium",
-    action: "Mensagens urgentes, e-mails e pendências rápidas da equipe. Só aqui. Decisões sobre pessoas esperam por tempo e critérios escritos.",
-    why: "Confinar a atenção fragmentada a uma caixa de horário específica. Pressa e cansaço deixam os vieses decidirem por você.",
-    source: "A Sociedade do Cansaço · Biased",
-  },
-  light: {
-    title: "Tarefas leves", load: "low",
-    action: "Ajustes, revisões e burocracia rápida. Nada que exija criar do zero.",
-    why: "O pico de foco já foi usado no Deep Work; agora é a coluna de baixa carga.",
-    source: "Sistema de 3 Âncoras",
-  },
-  lunch: {
-    title: "Almoço e descompressão", load: "none",
-    action: "Refeição limpa e 15 min de caminhada ao ar livre sem fone, ou cochilo de no máximo 20 min.",
-    why: "O tédio profundo de caminhar sem estímulos limpa a memória de trabalho e gera insights.",
-    source: "A Sociedade do Cansaço · Sapiens",
-  },
-  valley: {
-    title: "Vale circadiano", load: "low",
-    action: "Reuniões de alinhamento, tarefas mecânicas, revisões simples, organização e burocracia.",
-    why: "Respeita a queda natural de alerta depois do almoço sem forçar o CPF a criar do zero.",
-    source: "Cronobiologia · Behave",
-  },
-  exec: {
-    title: "Execução estruturada", load: "mediumHigh",
-    action: "Implementar o que foi arquitetado de manhã, estudo técnico prático. Nos últimos 10 min, liste as 3 prioridades de amanhã.",
-    why: "Fechar o ciclo com um ritual de encerramento cria o gatilho do dia seguinte.",
-    source: "O Poder do Hábito",
-  },
-  train: {
-    title: "Treino", load: "physical",
-    action: "Alterne na semana: força 3×, zona 2 (ritmo em que ainda dá para conversar) 2–3× e um treino intenso de VO2 máx. É a transição entre o eu profissional e o pessoal.",
-    why: "Hábito angular que metaboliza cortisol e libera BDNF. Força e capacidade aeróbica estão entre os maiores preditores de anos vividos com saúde.",
-    source: "Sapiens · O Poder do Hábito · Outlive",
-  },
-  tribe: {
-    title: "Vida tribal", load: "none",
-    action: "Banho, jantar em família, conversa de verdade ou hobby sem pressão de performance.",
-    why: "Conexão humana real e atividades que são um fim em si mesmas.",
-    source: "Sapiens · A Sociedade do Cansaço",
-  },
-  sunset: {
-    title: "Pôr do sol artificial", load: "none",
-    action: "Luz amarela e indireta, zero telas de trabalho, leitura leve. Revise o dia sem culpa: o que no ambiente ajudou ou atrapalhou? Ajuste o ambiente para amanhã.",
-    why: "Protege a melatonina e o sono profundo. Comportamento é produto de biologia e ambiente, então mude o ambiente em vez de cobrar mais força de vontade.",
-    source: "Cronobiologia · Determined · Hábitos Atômicos",
-  },
-};
+/** Treino do dia, alternando força, zona 2 e VO2 máx (Outlive). Índice = dia da semana. */
+const WORKOUTS = [
+  { kind: "Descanso ativo", steps: ["Caminhada longa ao ar livre"] },
+  { kind: "Força", steps: ["Aquecer 10 min", "Agachar, empurrar, puxar"] },
+  { kind: "Zona 2", steps: ["45 min em ritmo de conversa"] },
+  { kind: "Força", steps: ["Aquecer 10 min", "Levantar e carregar peso"] },
+  { kind: "Zona 2", steps: ["45 min em ritmo de conversa"] },
+  { kind: "Força", steps: ["Aquecer 10 min", "Corpo inteiro"] },
+  { kind: "VO2 máx", steps: ["Aquecer 10 min", "4 × 4 min forte, 4 min leve"] },
+];
 
 export const ANCHORS = [
-  {
-    id: "anchor1", title: "Início biológico fixo",
-    detail: "Primeiros 30 min: mesmo horário (±45 min), água, luz natural, zero redes sociais e a Única Tarefa Crítica definida.",
-  },
-  {
-    id: "anchor2", title: "Casamento energia–tarefa",
-    detail: "Um bloco de 90–120 min de alta carga pela manhã, antes de abrir qualquer canal de comunicação. O resto do dia é baixa carga.",
-  },
-  {
-    id: "anchor3", title: "Disjuntor de desligamento",
-    detail: "Horário fixo: feche o computador, escreva a tarefa de amanhã num papel e vá treinar ou caminhar. Dali em diante, proibido produzir.",
-  },
+  { id: "anchor1", title: "Início fixo", steps: "Acordar no horário · água · sol · Única Coisa" },
+  { id: "anchor2", title: "Foco primeiro", steps: "90–120 min de alta carga antes de abrir mensagens" },
+  { id: "anchor3", title: "Desligar", steps: "Fechar o computador · anotar amanhã · treinar" },
 ];
 
 export const PRINCIPLES = [
@@ -174,7 +107,7 @@ export const PRINCIPLES = [
 export const AWAKE_SPAN = 16 * 60;
 /** O almoço começa sempre 5h30 depois do despertar (12:00 para quem acorda 06:30). */
 const LUNCH_START = 330;
-/** A vida tribal termina 14h30 depois do despertar (21:00). */
+/** A vida pessoal termina 14h30 depois do despertar (21:00). */
 const SUNSET_START = 870;
 /** Transição entre o desligamento e o treino. */
 const SHUTDOWN_GAP = 15;
@@ -186,13 +119,14 @@ export function minutesBetween(from, to) {
 
 /**
  * Monta a agenda do dia a partir dos ajustes.
- * Devolve [{ id, start, end, ...BLOCKS[id] }] com start/end em minutos desde o despertar.
+ * `weekday` (0 = domingo) escolhe o treino do dia.
+ * Devolve [{ id, start, end, title, steps }] com start/end em minutos desde o despertar.
  */
-export function buildSchedule(settings) {
+export function buildSchedule(settings, weekday = 1) {
   const out = [];
   let t = 0;
-  const push = (id, len) => {
-    if (len > 0) out.push({ id, start: t, end: t + len, ...BLOCKS[id] });
+  const push = (id, len, extra = {}) => {
+    if (len > 0) out.push({ id, start: t, end: t + len, ...BLOCKS[id], ...extra });
     t += Math.max(0, len);
   };
 
@@ -200,14 +134,18 @@ export function buildSchedule(settings) {
   push("miracle", 20);
   push("food", 50);
   // 2 ciclos: 90 + 15 de pausa + 90 + 15 de caminhada. 1 ciclo: 120.
-  push("deep", settings.deepCycles === 2 ? 210 : 120);
+  const twoCycles = settings.deepCycles === 2;
+  push("deep", twoCycles ? 210 : 120, {
+    steps: [...BLOCKS.deep.steps, twoCycles ? "2 × 90 min, pausa de 15" : "1 ciclo de 90–120 min"],
+  });
   push("triage", 30);
   push("light", LUNCH_START - t);
   push("lunch", settings.lunch);
   push("valley", 90);
   push("exec", minutesBetween(settings.wake, settings.shutdown) - t);
   t += SHUTDOWN_GAP;
-  push("train", settings.workout);
+  const workout = WORKOUTS[weekday];
+  push("train", settings.workout, { title: `Treino · ${workout.kind}`, steps: workout.steps });
   push("tribe", SUNSET_START - t);
   push("sunset", AWAKE_SPAN - t);
   return out;

@@ -22,7 +22,10 @@ function calendar(events) {
   return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Rotina//PT-BR", "CALSCALE:GREGORIAN", ...events, "END:VCALENDAR"].join("\r\n");
 }
 
-/** A rotina inteira como eventos diários, cada um com alerta no início. */
+/**
+ * A rotina inteira como eventos diários, cada um com alerta no início.
+ * O treino muda por dia da semana, então no Calendário ele aparece só como "Treino".
+ */
 export function routineICS(schedule, wake) {
   const base = logicalDate();
   base.setHours(0, 0, 0, 0);
@@ -38,11 +41,11 @@ export function routineICS(schedule, wake) {
       `DTSTART:${localStamp(start)}`,
       `DTEND:${localStamp(end)}`,
       "RRULE:FREQ=DAILY",
-      `SUMMARY:${escape(b.title)}`,
-      `DESCRIPTION:${escape(b.action)}`,
+      `SUMMARY:${escape(b.id === "train" ? "Treino" : b.title)}`,
+      `DESCRIPTION:${escape(b.id === "train" ? "Veja o treino de hoje no app." : b.steps.join(" · "))}`,
       "BEGIN:VALARM",
       "ACTION:DISPLAY",
-      `DESCRIPTION:${escape(b.title)}`,
+      `DESCRIPTION:${escape(b.id === "train" ? "Treino" : b.title)}`,
       "TRIGGER:PT0M",
       "END:VALARM",
       "END:VEVENT",

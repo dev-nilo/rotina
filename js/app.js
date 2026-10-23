@@ -1,5 +1,5 @@
 import {
-  ANCHORS, PRINCIPLES, LOADS, AWAKE_SPAN,
+  ANCHORS, PRINCIPLES, AWAKE_SPAN,
   buildSchedule, execMinutes, momentAt, clock, parseClock, duration,
 } from "./routine.js";
 import { state, save, now, day, dayKey, peekDay, logicalDate, toggleDone, isDone } from "./store.js";
@@ -11,7 +11,7 @@ let tab = "today";
 let expanded = null;
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-const schedule = () => buildSchedule(state.settings);
+const schedule = () => buildSchedule(state.settings, logicalDate().getDay());
 
 // MARK: - Ícones
 
@@ -23,48 +23,55 @@ const ICON = {
 };
 const icon = (name) => `<svg viewBox="0 0 24 24" class="icon" aria-hidden="true">${ICON[name]}</svg>`;
 
+// MARK: - Concluídos
+
+const stepId = (block, i) => `${block.id}:${i}`;
+
+/** Um bloco está feito quando foi marcado inteiro ou quando todos os passos foram marcados. */
+function blockDone(block) {
+  return isDone(block.id) || (block.steps.length > 0 && block.steps.every((_, i) => isDone(stepId(block, i))));
+}
+
+function toggleBlock(block) {
+  const d = day();
+  if (blockDone(block)) {
+    const ids = new Set([block.id, ...block.steps.map((_, i) => stepId(block, i))]);
+    d.done = d.done.filter((id) => !ids.has(id));
+  } else {
+    d.done.push(block.id);
+  }
+  save();
+}
+
 // MARK: - Componentes
 
-function loadBar(load) {
-  const level = LOADS[load].level;
-  return `<span class="load" aria-label="Demanda ${LOADS[load].label}">${[0, 1, 2, 3]
-    .map((i) => `<i class="${i < level ? "on" : ""}"></i>`).join("")}</span>`;
+function checkButton(action, id, done, label) {
+  return `<button class="check ${done ? "done" : ""}" data-action="${action}" data-id="${id}" aria-label="${done ? "Desmarcar" : "Marcar"} ${esc(label)}">${done ? icon("check") : ""}</button>`;
 }
 
-function checkButton(id, done, label) {
-  return `<button class="check ${done ? "done" : ""}" data-action="toggle" data-id="${id}" aria-label="${done ? "Desmarcar" : "Marcar"} ${esc(label)}">${done ? icon("check") : ""}</button>`;
-}
-
-function weekDots() {
-  const total = (d) => (d.mode === "chaotic" ? ANCHORS.length : schedule().length);
-  const fmt = new Intl.DateTimeFormat("pt-BR", { weekday: "narrow" });
-  const dots = [];
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date(now().getTime() - i * 86400000);
-    const d = peekDay(dayKey(date));
-    const ids = d?.mode === "chaotic" ? ANCHORS.map((a) => a.id) : schedule().map((b) => b.id);
-    const ratio = d?.mode ? d.done.filter((id) => ids.includes(id)).length / total(d) : 0;
-    const label = fmt.format(new Date(date.getTime() - state.settings.wake * 60000)).toUpperCase();
-    dots.push(`<div class="dot ${i === 0 ? "today" : ""}" title="${d?.cycles ?? 0} ciclos de foco">
-        <span class="disc ${d?.cycles ? "focused" : ""}" style="--fill:${Math.round(ratio * 100)}%"></span>
-        <small>${label}</small></div>`);
-  }
-  return `<div class="week">${dots.join("")}</div>`;
-}
-
-function header(title) {
-  return `<header class="top"><h1>${esc(title)}</h1></header>`;
-}
-
-function todayTitle() {
+function header() {
   const s = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric" }).format(logicalDate());
-  return s.charAt(0).toUpperCase() + s.slice(1);
+  return `<header class="top"><h1>${esc(s.charAt(0).toUpperCase() + s.slice(1))}</h1></header>`;
+}
+
+/** Lembretes de uma linha: fim de semana e "nunca falhe duas vezes". */
+function chips() {
+  const out = [];
+  const wd = logicalDate().getDay();
+  if (wd === 0 || wd === 6) out.push(`Fim de semana: acordar até ${clock(60, state.settings.wake)}`);
+
+  const yesterday = peekDay(dayKey(new Date(now().getTime() - 86400000)));
+  const hasHistory = Object.keys(state.days).some((k) => k < dayKey() && state.days[k].done.length);
+  const missed = yesterday ? yesterday.done.length === 0 : hasHistory;
+  if (missed && !day().done.length) out.push("Ontem falhou? Hoje basta o despertar.");
+
+  return out.length ? `<div class="chips">${out.map((c) => `<span class="chip">${esc(c)}</span>`).join("")}</div>` : "";
 }
 
 function focusField() {
   return `<section class="focus">
-      <div class="eyebrow">A Única Coisa</div>
-      <textarea rows="1" data-input="focus" placeholder="O que torna o dia ganho?">${esc(day().focus)}</textarea>
+      <span class="eyebrow">Única Coisa</span>
+      <textarea rows="1" data-input="focus" placeholder="Toque para definir">${esc(day().focus)}</textarea>
     </section>`;
 }
 
@@ -74,11 +81,10 @@ function catCard() {
   const phase = t?.phase ?? null;
   const label = phase === "focus" ? "Foco" : phase === "rest" ? "Pausa" : "cat-modoro";
   const time = t ? cat.formatRemaining(cat.remaining()) : `${preset.focus}:00`;
-  const cycles = day().cycles;
 
   const controls = t
-    ? `<button class="btn primary" data-action="timer-ics">Alarme no Calendário</button>
-       <button class="btn" data-action="timer-skip">${phase === "focus" ? "Pausar agora" : "Pular pausa"}</button>
+    ? `<button class="btn primary" data-action="timer-ics">Alarme</button>
+       <button class="btn" data-action="timer-skip">${phase === "focus" ? "Pausar" : "Pular pausa"}</button>
        <button class="btn ghost" data-action="timer-stop">Parar</button>`
     : `<button class="btn primary" data-action="timer-start">Iniciar foco</button>
        ${segmented("timerPreset", [["90/15", "90/15"], ["25/5", "25/5"]])}`;
@@ -87,96 +93,71 @@ function catCard() {
       <div class="cat-row">
         ${cat.catSVG(phase)}
         <div>
-          <div class="eyebrow accent">${label}</div>
+          <div class="eyebrow">${label} · ${day().cycles} ${day().cycles === 1 ? "ciclo" : "ciclos"}</div>
           <div class="timer" data-timer>${time}</div>
-          <div class="muted small">${cycles} ${cycles === 1 ? "ciclo" : "ciclos"} hoje</div>
         </div>
       </div>
       <div class="controls">${controls}</div>
     </section>`;
 }
 
+/** O cartão principal: o que fazer agora, como checklist. */
 function nowCard(sched) {
   const wake = state.settings.wake;
   const mo = momentAt(sched, now(), wake);
 
-  if (mo.kind === "block") {
-    const b = mo.block;
-    const pct = ((mo.m - b.start) / (b.end - b.start)) * 100;
-    const action = b.id === "deep"
-      ? (state.settings.deepCycles === 2 ? "2 ciclos de 90 min com 15 min de pausa real. " : "1 ciclo de 90–120 min. ") + b.action
-      : b.action;
+  if (mo.kind === "sleep") {
     return `<section class="card now">
-        <div class="eyebrow accent">Agora</div>
-        <h2>${esc(b.title)}</h2>
-        <p class="muted">${esc(action)}</p>
-        <div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>
-        <div class="meta"><span>${clock(b.start, wake)} – ${clock(b.end, wake)}</span><span>faltam ${duration(b.end - mo.m)}</span></div>
+        <div class="eyebrow">Agora</div>
+        <h2>Dormir</h2>
+        <p class="sub">Acordar às ${clock(0, wake)}</p>
       </section>`;
   }
-  if (mo.kind === "gap") {
-    return `<section class="card now">
-        <div class="eyebrow accent">Transição</div>
-        <h2>Respire.</h2>
-        <p class="muted">A seguir, ${esc(mo.next.title.toLowerCase())} às ${clock(mo.next.start, wake)}.</p>
-      </section>`;
-  }
+
+  const b = mo.kind === "block" ? mo.block : mo.next;
+  const eyebrow = mo.kind === "block"
+    ? `Agora · faltam ${duration(b.end - mo.m)}`
+    : `A seguir · às ${clock(b.start, wake)}`;
+  const pct = mo.kind === "block" ? ((mo.m - b.start) / (b.end - b.start)) * 100 : 0;
+
   return `<section class="card now">
-      <div class="eyebrow accent">Noite</div>
-      <h2>Hora de dormir</h2>
-      <p class="muted">Acordar às ${clock(0, wake)}. Oito horas de sono sustentam todo o resto.</p>
+      <div class="eyebrow">${eyebrow}</div>
+      <h2>${esc(b.title)}</h2>
+      <ul class="steps">${b.steps.map((s, i) => {
+        const done = isDone(stepId(b, i)) || isDone(b.id);
+        return `<li class="${done ? "is-done" : ""}">
+            <button data-action="step" data-id="${stepId(b, i)}">
+              <span class="box">${done ? icon("check") : ""}</span><span>${esc(s)}</span>
+            </button>
+          </li>`;
+      }).join("")}</ul>
+      ${mo.kind === "block" ? `<div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>` : ""}
     </section>`;
 }
 
-function weekendNote() {
-  const wd = logicalDate().getDay();
-  if (wd !== 0 && wd !== 6) return "";
-  const wake = state.settings.wake;
-  return `<section class="note">
-      <div class="eyebrow">Fim de semana</div>
-      <strong>Acorde até ${clock(60, wake)}.</strong>
-      <p class="muted">Dormiu tarde? Mantenha o despertar, tome sol e compense com um cochilo de 20–30 min entre ${clock(390, wake)} e ${clock(480, wake)}.</p>
-    </section>`;
-}
-
-/** Hábitos Atômicos: se ontem não rolou, o que importa é não falhar duas vezes. */
-function neverMissTwice() {
-  const yesterday = peekDay(dayKey(new Date(now().getTime() - 86400000)));
-  const hasHistory = Object.keys(state.days).some((k) => k < dayKey() && state.days[k].done.length);
-  const missed = yesterday ? yesterday.done.length === 0 : hasHistory;
-  if (!missed || day().done.length) return "";
-  return `<section class="note">
-      <div class="eyebrow">Nunca falhe duas vezes</div>
-      <strong>Ontem não rolou. Tudo bem.</strong>
-      <p>Hoje, só a primeira âncora já conta: acordar no horário, água e luz.</p>
-    </section>`;
-}
-
-function timeline(sched) {
+/** O dia inteiro numa lista compacta. Toque num bloco para ver os passos. */
+function dayList(sched) {
   const wake = state.settings.wake;
   const mo = momentAt(sched, now(), wake);
-  const doneCount = sched.filter((b) => isDone(b.id)).length;
 
   const rows = sched.map((b) => {
-    const done = isDone(b.id);
+    const done = blockDone(b);
     const isNow = mo.kind === "block" && mo.block.id === b.id;
+    const past = mo.m >= b.end && !isNow;
     const open = expanded === b.id;
-    return `<div class="row ${isNow ? "is-now" : ""} ${done ? "is-done" : ""}">
-        <span class="time">${clock(b.start, wake)}</span>
+    return `<div class="row ${isNow ? "is-now" : ""} ${done ? "is-done" : ""} ${past && !done ? "is-past" : ""}">
         <button class="row-main" data-action="expand" data-id="${b.id}" aria-expanded="${open}">
-          <span class="row-title"><span>${esc(b.title)}</span>${loadBar(b.load)}</span>
-          ${open ? `<span class="detail">
-              <span>${esc(b.action)}</span>
-              <span class="muted">${esc(b.why)}</span>
-              <span class="faint small">${LOADS[b.load].label} · ${esc(b.source)}</span>
-            </span>` : ""}
+          <span class="time">${clock(b.start, wake)}</span>
+          <span class="row-title">${esc(b.title)}</span>
         </button>
-        ${checkButton(b.id, done, b.title)}
+        ${checkButton("toggle-block", b.id, done, b.title)}
+        ${open ? `<div class="row-steps">${b.steps.map(esc).join(" · ")}</div>` : ""}
       </div>`;
   });
 
+  const doneCount = sched.filter(blockDone).length;
   return `<section>
-      <div class="section-head"><span class="eyebrow">Seu dia</span><span class="eyebrow num">${doneCount} de ${sched.length}</span></div>
+      <div class="section-head"><span class="eyebrow">Dia</span><span class="eyebrow num">${doneCount}/${sched.length}</span></div>
       ${rows.join("")}
     </section>`;
 }
@@ -184,34 +165,31 @@ function timeline(sched) {
 function anchorsList() {
   return `<section>
       <div class="section-head"><span class="eyebrow">3 Âncoras</span></div>
-      ${ANCHORS.map((a, i) => {
+      ${ANCHORS.map((a) => {
         const done = isDone(a.id);
         return `<div class="row anchor ${done ? "is-done" : ""}">
-            <span class="time num">${i + 1}</span>
             <div class="row-main static">
-              <span class="row-title"><span>${esc(a.title)}</span></span>
-              <span class="detail"><span class="muted">${esc(a.detail)}</span></span>
+              <span class="row-title">${esc(a.title)}</span>
+              <span class="row-sub">${esc(a.steps)}</span>
             </div>
-            ${checkButton(a.id, done, a.title)}
+            ${checkButton("toggle", a.id, done, a.title)}
           </div>`;
       }).join("")}
     </section>`;
 }
 
 function taskList(heavy) {
-  const title = heavy ? "Alta carga · manhã" : "Baixa carga · tarde";
-  const hint = heavy ? "Criar, arquitetar, problemas difíceis" : "E-mails, reuniões, ajustes, burocracia";
+  const title = heavy ? "Manhã · alta carga" : "Tarde · baixa carga";
   const tasks = state.tasks.filter((t) => t.heavy === heavy);
   return `<section class="tasks">
       <div class="section-head"><span class="eyebrow">${title}</span></div>
-      <p class="faint small">${hint}</p>
       ${tasks.map((t) => `<div class="task ${t.done ? "is-done" : ""}">
           <button class="check small-check ${t.done ? "done" : ""}" data-action="task-toggle" data-id="${t.id}" aria-label="Marcar ${esc(t.title)}">${t.done ? icon("check") : ""}</button>
           <span class="task-title">${esc(t.title)}</span>
           <button class="x" data-action="task-delete" data-id="${t.id}" aria-label="Apagar ${esc(t.title)}">×</button>
         </div>`).join("")}
       <form data-form="task" data-heavy="${heavy}">
-        <input name="title" placeholder="Adicionar tarefa" autocomplete="off" enterkeyhint="done">
+        <input name="title" placeholder="+ ${heavy ? "Criar, resolver, arquitetar" : "E-mails, reuniões, ajustes"}" autocomplete="off" enterkeyhint="done">
       </form>
     </section>`;
 }
@@ -227,15 +205,14 @@ function segmented(key, options) {
 
 function chooser() {
   return `<div class="chooser">
-      <p class="eyebrow">${esc(todayTitle())}</p>
       <h1>Como vai ser hoje?</h1>
       <button class="choice" data-action="mode" data-mode="structured">
-        <strong>Dia estruturado</strong>
+        <strong>Estruturado</strong>
         <span class="muted">A agenda completa, bloco a bloco.</span>
       </button>
       <button class="choice" data-action="mode" data-mode="chaotic">
-        <strong>Dia caótico</strong>
-        <span class="muted">Só as 3 âncoras. O resto flui conforme a energia.</span>
+        <strong>Caótico</strong>
+        <span class="muted">Só 3 âncoras. O resto flui.</span>
       </button>
     </div>`;
 }
@@ -248,35 +225,34 @@ function todayScreen() {
   const showCat = state.timer || (mo.kind === "block" && mo.block.id === "deep");
 
   const body = d.mode === "structured"
-    ? [nowCard(sched), showCat ? catCard() : "", focusField(), neverMissTwice(), weekendNote(), timeline(sched)]
-    : [catCard(), focusField(), neverMissTwice(), weekendNote(), anchorsList(), taskList(true), taskList(false)];
+    ? [chips(), focusField(), nowCard(sched), showCat ? catCard() : "", dayList(sched)]
+    : [chips(), focusField(), catCard(), anchorsList(), taskList(true), taskList(false)];
 
-  const other = d.mode === "structured" ? "Hoje está caótico? Trocar para 3 Âncoras" : "Trocar para o dia estruturado";
-  return `${header(todayTitle())}${weekDots()}${body.join("")}
+  const other = d.mode === "structured" ? "Dia caótico? Usar 3 Âncoras" : "Voltar para a agenda completa";
+  return `${header()}${body.join("")}
       <button class="link" data-action="switch-mode">${other}</button>`;
 }
 
 function whyScreen() {
-  return `${header("Por quê")}
-    <p class="lead">Produtividade sustentável não vem de acordar às 5h sacrificando o sono. Vem de alinhar o trabalho mais caro do cérebro ao seu ritmo biológico, ir fundo numa coisa só e cuidar do corpo que vai carregar tudo isso por décadas.</p>
+  return `<header class="top"><h1>Por quê</h1></header>
+    <p class="lead">Alinhar o trabalho mais caro do cérebro ao ritmo biológico, ir fundo numa coisa só e cuidar do corpo que vai carregar tudo isso por décadas.</p>
     <section>${PRINCIPLES.map((p) => `<article class="principle">
-        <div class="row-title"><strong>${esc(p.book)}</strong><span class="faint small">${esc(p.author)}</span></div>
+        <div class="principle-head"><strong>${esc(p.book)}</strong><span class="faint small">${esc(p.author)}</span></div>
         <p class="muted">${esc(p.idea)}</p>
         <p>→ ${esc(p.practice)}</p>
       </article>`).join("")}</section>
     <section class="note">
-      <div class="eyebrow">Regra de ouro do fim de semana</div>
-      <p class="muted">Acorde no máximo 60 min mais tarde. Se dormiu tarde, compense com um cochilo de 20–30 min no início da tarde, nunca com despertar tardio.</p>
+      <div class="eyebrow">Fim de semana</div>
+      <p>Acorde no máximo 60 min mais tarde. Dormiu tarde? Cochilo de 20–30 min no início da tarde, nunca despertar tardio.</p>
     </section>`;
 }
 
 function settingsScreen() {
   const s = state.settings;
-  const sched = schedule();
-  const execLeft = execMinutes(sched);
+  const execLeft = execMinutes(schedule());
   const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
 
-  return `${header("Ajustes")}
+  return `<header class="top"><h1>Ajustes</h1></header>
     <section class="form">
       <label class="field"><span>Acordar às</span><input type="time" data-setting="wake" value="${clock(0, s.wake)}"></label>
       <div class="field"><span>Dormir às</span><span class="muted num">${clock(AWAKE_SPAN, s.wake)}</span></div>
@@ -297,7 +273,7 @@ function settingsScreen() {
       <p class="hint">Cria um evento diário para cada bloco, com alerta no início. Se mudar os horários, apague os eventos antigos e adicione de novo.</p>
     </section>
     ${standalone ? "" : `<section class="note"><div class="eyebrow">Instalar no iPhone</div>
-      <p class="muted">No Safari, toque em Compartilhar e depois em “Adicionar à Tela de Início”.</p></section>`}
+      <p>No Safari, toque em Compartilhar e depois em “Adicionar à Tela de Início”.</p></section>`}
     <button class="link" data-action="reset-mode">Escolher de novo o modo de hoje</button>`;
 }
 
@@ -349,9 +325,16 @@ app.addEventListener("click", (e) => {
       tab = "today";
       break;
     case "toggle":
+    case "step":
       toggleDone(id);
       if (navigator.vibrate) navigator.vibrate(10);
       break;
+    case "toggle-block": {
+      const block = schedule().find((b) => b.id === id);
+      if (block) toggleBlock(block);
+      if (navigator.vibrate) navigator.vibrate(10);
+      break;
+    }
     case "expand":
       expanded = expanded === id ? null : id;
       break;
