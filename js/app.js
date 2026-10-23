@@ -139,6 +139,19 @@ function weekendNote() {
     </section>`;
 }
 
+/** Hábitos Atômicos: se ontem não rolou, o que importa é não falhar duas vezes. */
+function neverMissTwice() {
+  const yesterday = peekDay(dayKey(new Date(now().getTime() - 86400000)));
+  const hasHistory = Object.keys(state.days).some((k) => k < dayKey() && state.days[k].done.length);
+  const missed = yesterday ? yesterday.done.length === 0 : hasHistory;
+  if (!missed || day().done.length) return "";
+  return `<section class="note">
+      <div class="eyebrow">Nunca falhe duas vezes</div>
+      <strong>Ontem não rolou. Tudo bem.</strong>
+      <p>Hoje, só a primeira âncora já conta: acordar no horário, água e luz.</p>
+    </section>`;
+}
+
 function timeline(sched) {
   const wake = state.settings.wake;
   const mo = momentAt(sched, now(), wake);
@@ -235,8 +248,8 @@ function todayScreen() {
   const showCat = state.timer || (mo.kind === "block" && mo.block.id === "deep");
 
   const body = d.mode === "structured"
-    ? [nowCard(sched), showCat ? catCard() : "", focusField(), weekendNote(), timeline(sched)]
-    : [catCard(), focusField(), weekendNote(), anchorsList(), taskList(true), taskList(false)];
+    ? [nowCard(sched), showCat ? catCard() : "", focusField(), neverMissTwice(), weekendNote(), timeline(sched)]
+    : [catCard(), focusField(), neverMissTwice(), weekendNote(), anchorsList(), taskList(true), taskList(false)];
 
   const other = d.mode === "structured" ? "Hoje está caótico? Trocar para 3 Âncoras" : "Trocar para o dia estruturado";
   return `${header(todayTitle())}${weekDots()}${body.join("")}
@@ -245,7 +258,7 @@ function todayScreen() {
 
 function whyScreen() {
   return `${header("Por quê")}
-    <p class="lead">Produtividade sustentável não vem de acordar às 5h sacrificando o sono, e sim de alinhar o trabalho mais caro do cérebro ao seu ritmo biológico.</p>
+    <p class="lead">Produtividade sustentável não vem de acordar às 5h sacrificando o sono. Vem de alinhar o trabalho mais caro do cérebro ao seu ritmo biológico, ir fundo numa coisa só e cuidar do corpo que vai carregar tudo isso por décadas.</p>
     <section>${PRINCIPLES.map((p) => `<article class="principle">
         <div class="row-title"><strong>${esc(p.book)}</strong><span class="faint small">${esc(p.author)}</span></div>
         <p class="muted">${esc(p.idea)}</p>
@@ -299,6 +312,10 @@ function tabBar() {
 function render() {
   const screen = tab === "today" ? todayScreen() : tab === "why" ? whyScreen() : settingsScreen();
   app.innerHTML = `<main class="screen">${screen}</main>${tabBar()}`;
+  // Cada tela tem a sua cor de fundo; a barra de status do iPhone acompanha.
+  document.body.dataset.screen = tab === "today" && !day().mode ? "chooser" : tab;
+  const page = getComputedStyle(document.body).getPropertyValue("--page").trim();
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", page));
   autosize();
 }
 

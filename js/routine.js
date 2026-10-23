@@ -15,33 +15,33 @@ export const LOADS = {
 export const BLOCKS = {
   wake: {
     title: "Despertar e ativação", load: "low",
-    action: "Sem soneca. 500 ml de água, 10 min de luz solar direta e mobilidade articular. Nada de celular.",
-    why: "Corta a melatonina, dispara o pico saudável de cortisol e sincroniza o relógio biológico.",
-    source: "Cronobiologia · Sapiens",
+    action: "Sem soneca. Empilhe os hábitos: depois de levantar, 500 ml de água; depois da água, 10 min de luz solar direta e mobilidade articular. Nada de celular.",
+    why: "Corta a melatonina, dispara o pico saudável de cortisol e sincroniza o relógio biológico. Cada hábito vira o gatilho do próximo.",
+    source: "Cronobiologia · Sapiens · Hábitos Atômicos",
   },
   miracle: {
     title: "Milagre da Manhã realista", load: "mediumLow",
-    action: "5 min de silêncio ou respiração, 5 min de leitura, 10 min definindo a Única Coisa que torna o dia ganho.",
+    action: "5 min de silêncio ou respiração, 5 min de leitura, 10 min definindo a Única Coisa: o que, feito hoje, torna todo o resto mais fácil ou desnecessário?",
     why: "Começar o dia ativo e contemplativo, não reagindo às notificações dos outros.",
-    source: "O Milagre da Manhã · A Sociedade do Cansaço",
+    source: "O Milagre da Manhã · A Única Coisa · A Sociedade do Cansaço",
   },
   food: {
     title: "Nutrição e preparação", load: "low",
-    action: "Café da manhã rico em proteína e gordura boa. Cafeína só a partir do início do Deep Work.",
-    why: "Evita picos e quedas de glicose que sabotam o córtex pré-frontal no meio da manhã.",
-    source: "Behave",
+    action: "Café da manhã com proteína de verdade e gordura boa. Cafeína só a partir do início do Deep Work.",
+    why: "Evita picos e quedas de glicose que sabotam o córtex pré-frontal, e proteína em toda refeição preserva músculo com o passar dos anos.",
+    source: "Behave · Outlive",
   },
   deep: {
     title: "Deep Work", load: "veryHigh",
-    action: "Só o problema mais difícil do dia, uma coisa por vez. Celular em outro cômodo.",
-    why: "Deixa (café + mesa limpa) → Rotina (monotarefa no pico do CPF) → Recompensa (pausa e caminhada curta).",
-    source: "Behave · O Poder do Hábito",
+    action: "Só a Única Coisa. Abra com 5 min de recuperação ativa (escreva de memória o que já sabe do problema) e trabalhe no limite da sua habilidade, buscando feedback. Celular em outro cômodo.",
+    why: "Deixa (café + mesa limpa) → Rotina (monotarefa no pico do CPF) → Recompensa (pausa e caminhada curta). São essas horas de prática deliberada que se acumulam em maestria.",
+    source: "Behave · O Poder do Hábito · Ultra-aprendizado · Outliers",
   },
   triage: {
     title: "Triagem e comunicação", load: "medium",
-    action: "Mensagens urgentes, e-mails e pendências rápidas da equipe. Só aqui.",
-    why: "Confinar a atenção fragmentada a uma caixa de horário específica.",
-    source: "A Sociedade do Cansaço",
+    action: "Mensagens urgentes, e-mails e pendências rápidas da equipe. Só aqui. Decisões sobre pessoas esperam por tempo e critérios escritos.",
+    why: "Confinar a atenção fragmentada a uma caixa de horário específica. Pressa e cansaço deixam os vieses decidirem por você.",
+    source: "A Sociedade do Cansaço · Biased",
   },
   light: {
     title: "Tarefas leves", load: "low",
@@ -69,9 +69,9 @@ export const BLOCKS = {
   },
   train: {
     title: "Treino", load: "physical",
-    action: "Musculação, corrida ou esporte coletivo. A transição entre o eu profissional e o pessoal.",
-    why: "Hábito angular que metaboliza cortisol e adrenalina e libera BDNF.",
-    source: "Sapiens · O Poder do Hábito",
+    action: "Alterne na semana: força 3×, zona 2 (ritmo em que ainda dá para conversar) 2–3× e um treino intenso de VO2 máx. É a transição entre o eu profissional e o pessoal.",
+    why: "Hábito angular que metaboliza cortisol e libera BDNF. Força e capacidade aeróbica estão entre os maiores preditores de anos vividos com saúde.",
+    source: "Sapiens · O Poder do Hábito · Outlive",
   },
   tribe: {
     title: "Vida tribal", load: "none",
@@ -81,9 +81,9 @@ export const BLOCKS = {
   },
   sunset: {
     title: "Pôr do sol artificial", load: "none",
-    action: "Luz amarela e indireta, zero telas de trabalho, leitura leve. Prepare o quarto para dormir.",
-    why: "Protege a melatonina e a arquitetura do sono profundo e REM.",
-    source: "Cronobiologia",
+    action: "Luz amarela e indireta, zero telas de trabalho, leitura leve. Revise o dia sem culpa: o que no ambiente ajudou ou atrapalhou? Ajuste o ambiente para amanhã.",
+    why: "Protege a melatonina e o sono profundo. Comportamento é produto de biologia e ambiente, então mude o ambiente em vez de cobrar mais força de vontade.",
+    source: "Cronobiologia · Determined · Hábitos Atômicos",
   },
 };
 
@@ -132,6 +132,41 @@ export const PRINCIPLES = [
     book: "A Sociedade do Cansaço", author: "Byung-Chul Han",
     idea: "Multitarefa é regressão, não evolução. Criar exige poder dizer não e suportar o tédio.",
     practice: "Caixas fixas para mensagens, caminhadas sem fone e janelas inegociáveis de ócio.",
+  },
+  {
+    book: "A Única Coisa", author: "Gary Keller e Jay Papasan",
+    idea: "Resultados extraordinários vêm de ir fundo numa coisa só, não de fazer várias pela metade.",
+    practice: "Toda manhã: qual é a única coisa que torna o resto mais fácil ou desnecessário? Ela vai para o Deep Work.",
+  },
+  {
+    book: "Hábitos Atômicos", author: "James Clear",
+    idea: "Você não sobe ao nível das suas metas; cai ao nível dos seus sistemas. Melhorias de 1% se acumulam.",
+    practice: "Empilhe hábitos, deixe o gatilho óbvio e nunca falhe duas vezes seguidas.",
+  },
+  {
+    book: "Ultra-aprendizado", author: "Scott H. Young",
+    idea: "Aprender rápido exige prática direta e recuperação ativa, não reler e sublinhar.",
+    practice: "Comece o Deep Work tentando lembrar sem consultar e busque feedback rápido.",
+  },
+  {
+    book: "Outliers", author: "Malcolm Gladwell",
+    idea: "Maestria é prática acumulada por milhares de horas, somada a oportunidade e contexto.",
+    practice: "Proteja o Deep Work todos os dias: são essas horas que somam.",
+  },
+  {
+    book: "Outlive", author: "Peter Attia",
+    idea: "Viver mais e melhor depende de força, capacidade aeróbica, estabilidade e sono, muito antes de remédios.",
+    practice: "Força, zona 2 e VO2 máx na semana, proteína em toda refeição e 8h de sono.",
+  },
+  {
+    book: "Determined", author: "Robert Sapolsky",
+    idea: "Nossas ações são produto de biologia e ambiente; o livre-arbítrio é bem menor do que parece.",
+    practice: "Projete o ambiente em vez de confiar na força de vontade, e trate as falhas sem culpa.",
+  },
+  {
+    book: "Biased", author: "Jennifer Eberhardt",
+    idea: "Vieses implícitos agem mais sob pressa, cansaço e ambiguidade.",
+    practice: "Decisões sobre pessoas: devagar, com critérios escritos antes, nunca no fim do dia.",
   },
 ];
 
