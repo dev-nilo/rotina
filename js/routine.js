@@ -130,7 +130,9 @@ export function buildSchedule(settings, weekday = 1) {
     t += Math.max(0, len);
   };
 
-  push("wake", 20);
+  // Fim de semana: no máximo 60 min mais tarde (regra contra o jet lag social).
+  const weekend = weekday === 0 || weekday === 6;
+  push("wake", 20, weekend ? { steps: [`Levantar até ${clock(60, settings.wake)}`, ...BLOCKS.wake.steps.slice(1)] } : {});
   push("miracle", 20);
   push("food", 50);
   // 2 ciclos: 90 + 15 de pausa + 90 + 15 de caminhada. 1 ciclo: 120.

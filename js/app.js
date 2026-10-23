@@ -10,7 +10,15 @@ import { routineICS, phaseEndICS, openICS } from "./ics.js";
 import { ask, scheduleFor, splitOps, SETTING_LABELS } from "./assistant.js";
 
 const app = document.getElementById("app");
-let tab = "today";
+
+/**
+ * Navegação: "home" (só o agora), "day" (o dia inteiro de `viewKey`) e "settings".
+ * A faixa de dias e o menu "⋯" abrem por cima da tela atual.
+ */
+let screen = "home";
+let viewKey = null;
+let stripOpen = false;
+let menuOpen = false;
 let expanded = null;
 
 /** Conversa aberta com o assistente (some ao fechar). */
@@ -20,22 +28,29 @@ const assistant = { open: false, input: "", loading: false, error: "", reply: ""
 const editor = { open: false, key: "", id: "", title: "", start: "", end: "", steps: "", error: "" };
 
 /** Dia que está na tela; null = hoje. */
-let viewKey = null;
-const viewing = () => viewKey ?? dayKey();
-const isToday = () => viewing() === dayKey();
+const viewing = () => (screen === "day" && viewKey) || dayKey();
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 /** Agenda de hoje, já com os ajustes do assistente. */
 const schedule = () => scheduleFor(dayKey());
 
+function go(to, key = null) {
+  screen = to;
+  viewKey = key;
+  stripOpen = false;
+  menuOpen = false;
+  expanded = null;
+  window.scrollTo(0, 0);
+}
+
 // MARK: - Ícones
 
 const ICON = {
-  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
-  book: '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5"/>',
-  sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
   check: '<path d="M7 12.5l3 3 7-7"/>',
   spark: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+  more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
+  back: '<path d="M15 5l-7 7 7 7"/>',
+  down: '<path d="M6 9l6 6 6-6"/>',
 };
 const icon = (name) => `<svg viewBox="0 0 24 24" class="icon" aria-hidden="true">${ICON[name]}</svg>`;
 
@@ -59,11 +74,7 @@ function toggleBlock(block) {
   save();
 }
 
-// MARK: - Componentes
-
-function checkButton(action, id, done, label) {
-  return `<button class="check ${done ? "done" : ""}" data-action="${action}" data-id="${id}" aria-label="${done ? "Desmarcar" : "Marcar"} ${esc(label)}">${done ? icon("check") : ""}</button>`;
-}
+// MARK: - Datas
 
 const keyDate = (key) => new Date(`${key}T12:00:00`);
 const shiftKey = (key, days) => {
@@ -81,12 +92,32 @@ function dayLabel(key) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function header() {
+// MARK: - Topo
+
+/** Título que abre a faixa de dias; voltar à esquerda fora da tela inicial; "⋯" à direita. */
+function header(title, { back = false, strip = true } = {}) {
+  const titleEl = strip
+    ? `<button class="title-btn" data-action="strip-toggle" aria-expanded="${stripOpen}"><h1>${esc(title)}</h1>${icon("down")}</button>`
+    : `<h1>${esc(title)}</h1>`;
   return `<header class="top">
-      <h1>${esc(dayLabel(viewing()))}</h1>
-      <button class="ai-button" data-action="ai-open">${icon("spark")}<span>Ajustar</span></button>
+      <div class="top-left">
+        ${back ? `<button class="icon-btn" data-action="go-home" aria-label="Voltar">${icon("back")}</button>` : ""}
+        ${titleEl}
+      </div>
+      <button class="icon-btn" data-action="menu-toggle" aria-label="Mais opções" aria-expanded="${menuOpen}">${icon("more")}</button>
     </header>
-    ${dayStrip()}`;
+    ${menuOpen ? menu() : ""}
+    ${stripOpen ? dayStrip() : ""}`;
+}
+
+function menu() {
+  const mode = peekDay(dayKey())?.mode;
+  const items = [];
+  if (mode) {
+    items.push(`<button data-action="switch-mode">${mode === "structured" ? "Dia caótico: usar 3 Âncoras" : "Voltar para a agenda completa"}</button>`);
+  }
+  items.push(`<button data-action="go-settings">Ajustes e Por quê</button>`);
+  return `<nav class="menu">${items.join("")}</nav>`;
 }
 
 /** Uma semana para trás e duas para frente; o dia na tela fica destacado. */
@@ -105,18 +136,10 @@ function dayStrip() {
   return `<nav class="strip" aria-label="Dias">${items.join("")}</nav>`;
 }
 
-/** Lembretes de uma linha: fim de semana e "nunca falhe duas vezes". */
-function chips() {
-  const out = [];
-  const wd = logicalDate().getDay();
-  if (wd === 0 || wd === 6) out.push(`Fim de semana: acordar até ${clock(60, state.settings.wake)}`);
+// MARK: - Componentes
 
-  const yesterday = peekDay(dayKey(new Date(now().getTime() - 86400000)));
-  const hasHistory = Object.keys(state.days).some((k) => k < dayKey() && state.days[k].done.length);
-  const missed = yesterday ? yesterday.done.length === 0 : hasHistory;
-  if (missed && !day().done.length) out.push("Ontem falhou? Hoje basta o despertar.");
-
-  return out.length ? `<div class="chips">${out.map((c) => `<span class="chip">${esc(c)}</span>`).join("")}</div>` : "";
+function checkButton(action, id, done, label) {
+  return `<button class="check ${done ? "done" : ""}" data-action="${action}" data-id="${id}" aria-label="${done ? "Desmarcar" : "Marcar"} ${esc(label)}">${done ? icon("check") : ""}</button>`;
 }
 
 function focusField() {
@@ -126,30 +149,38 @@ function focusField() {
     </section>`;
 }
 
-function catCard() {
+/** cat-modoro dentro do cartão: um botão quando parado; gato e tempo quando rodando. */
+function catInline() {
   const t = state.timer;
-  const preset = cat.PRESETS[state.settings.timerPreset];
-  const phase = t?.phase ?? null;
-  const label = phase === "focus" ? "Foco" : phase === "rest" ? "Pausa" : "cat-modoro";
-  const time = t ? cat.formatRemaining(cat.remaining()) : `${preset.focus}:00`;
-
-  const controls = t
-    ? `<button class="btn primary" data-action="timer-ics">Alarme</button>
-       <button class="btn" data-action="timer-skip">${phase === "focus" ? "Pausar" : "Pular pausa"}</button>
-       <button class="btn ghost" data-action="timer-stop">Parar</button>`
-    : `<button class="btn primary" data-action="timer-start">Iniciar foco</button>
-       ${segmented("timerPreset", [["90/15", "90/15"], ["25/5", "25/5"]])}`;
-
-  return `<section class="card cat-card phase-${phase ?? "idle"}">
+  if (!t) {
+    return `<div class="cat-inline">
+        <button class="btn primary" data-action="timer-start">Iniciar foco · ${state.settings.timerPreset}</button>
+      </div>`;
+  }
+  const label = t.phase === "focus" ? "Foco" : "Pausa";
+  const cycles = day().cycles;
+  return `<div class="cat-inline running">
       <div class="cat-row">
-        ${cat.catSVG(phase)}
+        ${cat.catSVG(t.phase)}
         <div>
-          <div class="eyebrow">${label} · ${day().cycles} ${day().cycles === 1 ? "ciclo" : "ciclos"}</div>
-          <div class="timer" data-timer>${time}</div>
+          <div class="eyebrow">${label} · ${cycles} ${cycles === 1 ? "ciclo" : "ciclos"}</div>
+          <div class="timer" data-timer>${cat.formatRemaining(cat.remaining())}</div>
         </div>
       </div>
-      <div class="controls">${controls}</div>
-    </section>`;
+      <div class="controls">
+        <button class="btn primary" data-action="timer-ics">Alarme</button>
+        <button class="btn" data-action="timer-skip">${t.phase === "focus" ? "Pausar" : "Pular pausa"}</button>
+        <button class="btn ghost" data-action="timer-stop">Parar</button>
+      </div>
+    </div>`;
+}
+
+function checklist(items) {
+  return `<ul class="steps">${items.map(({ id, text, done }) => `<li class="${done ? "is-done" : ""}">
+      <button data-action="step" data-id="${id}">
+        <span class="box">${done ? icon("check") : ""}</span><span>${esc(text)}</span>
+      </button>
+    </li>`).join("")}</ul>`;
 }
 
 /** O cartão principal: o que fazer agora, como checklist. */
@@ -170,20 +201,38 @@ function nowCard(sched) {
     ? `Agora · faltam ${duration(b.end - mo.m)}`
     : `A seguir · às ${clock(b.start, wake)}`;
   const pct = mo.kind === "block" ? ((mo.m - b.start) / (b.end - b.start)) * 100 : 0;
+  const showCat = state.timer || (mo.kind === "block" && b.id === "deep");
 
   return `<section class="card now">
       <div class="eyebrow">${eyebrow}</div>
       <h2>${esc(b.title)}</h2>
-      <ul class="steps">${b.steps.map((s, i) => {
-        const done = isDone(stepId(b, i)) || isDone(b.id);
-        return `<li class="${done ? "is-done" : ""}">
-            <button data-action="step" data-id="${stepId(b, i)}">
-              <span class="box">${done ? icon("check") : ""}</span><span>${esc(s)}</span>
-            </button>
-          </li>`;
-      }).join("")}</ul>
+      ${checklist(b.steps.map((text, i) => ({ id: stepId(b, i), text, done: isDone(stepId(b, i)) || isDone(b.id) })))}
+      ${showCat ? catInline() : ""}
       ${mo.kind === "block" ? `<div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>` : ""}
     </section>`;
+}
+
+/** Modo caótico: as 3 âncoras no lugar do bloco atual. */
+function anchorsCard() {
+  return `<section class="card now">
+      <div class="eyebrow">Dia caótico · 3 âncoras</div>
+      <h2>Só isso hoje</h2>
+      ${checklist(ANCHORS.map((a) => ({ id: a.id, text: a.title, done: isDone(a.id) })))}
+      ${catInline()}
+    </section>`;
+}
+
+/** Uma linha com o que vem depois, para não precisar abrir o dia. */
+function nextLine(sched) {
+  const wake = state.settings.wake;
+  const mo = momentAt(sched, now(), wake);
+  const next = mo.kind === "block" ? sched.find((b) => b.start >= mo.block.end) : null;
+  if (!next) return "";
+  return `<button class="next" data-action="go-day">
+      <span class="eyebrow">Próximo</span>
+      <span class="num">${clock(next.start, wake)}</span>
+      <strong>${esc(next.title)}</strong>
+    </button>`;
 }
 
 /** O dia inteiro numa lista compacta. Toque num bloco para ver os passos e editar. */
@@ -214,12 +263,10 @@ function dayList(sched) {
       </div>`;
   });
 
-  const doneCount = sched.filter((b) => blockDone(b)).length;
   const undo = peekDay(key)?.ops?.length
     ? `<button class="link small-link" data-action="ai-undo">Desfazer ajustes deste dia</button>`
     : "";
   return `<section>
-      <div class="section-head"><span class="eyebrow">Dia</span><span class="eyebrow num">${doneCount}/${sched.length}</span></div>
       ${rows.join("")}
       <button class="add-row" data-action="edit-new">+ Compromisso</button>
       ${undo}
@@ -265,10 +312,12 @@ function segmented(key, options) {
     .join("")}</div>`;
 }
 
+const fab = () => `<button class="fab" data-action="ai-open" aria-label="Ajustar com o assistente">${icon("spark")}</button>`;
+
 // MARK: - Telas
 
 function chooser() {
-  return `${dayStrip()}<div class="chooser">
+  return `<div class="chooser">
       <h1>Como vai ser hoje?</h1>
       <button class="choice" data-action="mode" data-mode="structured">
         <strong>Estruturado</strong>
@@ -281,44 +330,31 @@ function chooser() {
     </div>`;
 }
 
-/** Outro dia (passado ou futuro): só a Única Coisa e a lista, sem o cartão Agora. */
-function otherDayScreen() {
-  const key = viewing();
-  const d = peekDay(key);
-  const body = d?.mode === "chaotic" ? anchorsList() : dayList(scheduleFor(key));
-  return `${header()}${focusField()}${body}
-      <button class="link" data-action="day-go" data-key="${dayKey()}">Voltar para hoje</button>`;
-}
-
-function todayScreen() {
-  if (!isToday()) return otherDayScreen();
+/** Tela inicial: só o agora, o próximo e o caminho para o dia inteiro. */
+function homeScreen() {
   const d = day();
-  if (!d.mode) return chooser();
+  if (!d.mode) return `${header("Hoje")}${chooser()}`;
   const sched = schedule();
-  const mo = momentAt(sched, now(), state.settings.wake);
-  const showCat = state.timer || (mo.kind === "block" && mo.block.id === "deep");
-
-  const body = d.mode === "structured"
-    ? [chips(), focusField(), nowCard(sched), showCat ? catCard() : "", dayList(sched)]
-    : [chips(), focusField(), catCard(), anchorsList(), taskList(true), taskList(false)];
-
-  const other = d.mode === "structured" ? "Dia caótico? Usar 3 Âncoras" : "Voltar para a agenda completa";
-  return `${header()}${body.join("")}
-      <button class="link" data-action="switch-mode">${other}</button>`;
+  const card = d.mode === "structured" ? nowCard(sched) : anchorsCard();
+  return `${header("Hoje")}
+    ${focusField()}
+    ${card}
+    ${d.mode === "structured" ? nextLine(sched) : ""}
+    <button class="link" data-action="go-day">Ver o dia</button>
+    ${fab()}`;
 }
 
-function whyScreen() {
-  return `<header class="top"><h1>Por quê</h1></header>
-    <p class="lead">Alinhar o trabalho mais caro do cérebro ao ritmo biológico, ir fundo numa coisa só e cuidar do corpo que vai carregar tudo isso por décadas.</p>
-    <section>${PRINCIPLES.map((p) => `<article class="principle">
-        <div class="principle-head"><strong>${esc(p.book)}</strong><span class="faint small">${esc(p.author)}</span></div>
-        <p class="muted">${esc(p.idea)}</p>
-        <p>→ ${esc(p.practice)}</p>
-      </article>`).join("")}</section>
-    <section class="note">
-      <div class="eyebrow">Fim de semana</div>
-      <p>Acorde no máximo 60 min mais tarde. Dormiu tarde? Cochilo de 20–30 min no início da tarde, nunca despertar tardio.</p>
-    </section>`;
+/** O dia inteiro (hoje ou outra data), com edição. */
+function dayScreen() {
+  const key = viewing();
+  const mode = peekDay(key)?.mode;
+  const body = mode === "chaotic"
+    ? `${anchorsList()}${key === dayKey() ? `${taskList(true)}${taskList(false)}` : ""}`
+    : dayList(scheduleFor(key));
+  return `${header(dayLabel(key), { back: true })}
+    ${key === dayKey() ? "" : focusField()}
+    ${body}
+    ${fab()}`;
 }
 
 function settingsScreen() {
@@ -326,7 +362,7 @@ function settingsScreen() {
   const execLeft = execMinutes(schedule());
   const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
 
-  return `<header class="top"><h1>Ajustes</h1></header>
+  return `${header("Ajustes", { back: true, strip: false })}
     <section class="form">
       <label class="field"><span>Acordar às</span><input type="time" data-setting="wake" value="${clock(0, s.wake)}"></label>
       <div class="field"><span>Dormir às</span><span class="muted num">${clock(AWAKE_SPAN, s.wake)}</span></div>
@@ -347,15 +383,27 @@ function settingsScreen() {
         ? `<div class="field"><span>Assistente</span><button class="btn small-btn" data-action="remove-key">Remover chave</button></div>
            <p class="hint">Chave da API do Claude salva só neste aparelho.</p>`
         : `<label class="field"><span>Chave da API</span><input type="password" data-apikey placeholder="sk-ant-…" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
-           <p class="hint">Para o botão Ajustar. Crie uma chave em console.anthropic.com → API Keys e cole aqui. Fica salva só neste aparelho; cada pedido custa poucos centavos.</p>`}
+           <p class="hint">Para o botão do assistente. Crie uma chave em console.anthropic.com → API Keys e cole aqui. Fica salva só neste aparelho; cada pedido custa poucos centavos.</p>`}
     </section>
     <section class="form">
       <button class="btn primary wide" data-action="export-ics">Adicionar rotina ao Calendário</button>
       <p class="hint">Cria um evento diário para cada bloco, com alerta no início. Se mudar os horários, apague os eventos antigos e adicione de novo.</p>
     </section>
-    ${standalone ? "" : `<section class="note"><div class="eyebrow">Instalar no iPhone</div>
-      <p>No Safari, toque em Compartilhar e depois em “Adicionar à Tela de Início”.</p></section>`}
-    <button class="link" data-action="reset-mode">Escolher de novo o modo de hoje</button>`;
+    ${standalone ? "" : `<section class="form"><p class="hint">Para instalar: no Safari, toque em Compartilhar e depois em “Adicionar à Tela de Início”.</p></section>`}
+    <button class="link small-link" data-action="reset-mode">Escolher de novo o modo de hoje</button>
+    ${whySection()}`;
+}
+
+function whySection() {
+  return `<section class="why">
+      <div class="section-head"><span class="eyebrow">Por quê</span></div>
+      <p class="lead">Alinhar o trabalho mais caro do cérebro ao ritmo biológico, ir fundo numa coisa só e cuidar do corpo que vai carregar tudo isso por décadas.</p>
+      ${PRINCIPLES.map((p) => `<article class="principle">
+        <div class="principle-head"><strong>${esc(p.book)}</strong><span class="faint small">${esc(p.author)}</span></div>
+        <p class="muted">${esc(p.idea)}</p>
+        <p>→ ${esc(p.practice)}</p>
+      </article>`).join("")}
+    </section>`;
 }
 
 // MARK: - Assistente
@@ -537,23 +585,13 @@ async function sendToAssistant(text) {
 
 // MARK: - Render
 
-function tabBar() {
-  const item = (id, name, label) =>
-    `<button class="${tab === id ? "on" : ""}" data-action="tab" data-tab="${id}">${icon(name)}<span>${label}</span></button>`;
-  return `<nav class="tabs">${item("today", "sun", "Hoje")}${item("why", "book", "Por quê")}${item("settings", "sliders", "Ajustes")}</nav>`;
-}
-
 function render() {
-  const screen = tab === "today" ? todayScreen() : tab === "why" ? whyScreen() : settingsScreen();
-  app.innerHTML = `<main class="screen">${screen}</main>${tabBar()}${assistantSheet()}${editorSheet()}`;
+  const body = screen === "home" ? homeScreen() : screen === "day" ? dayScreen() : settingsScreen();
+  app.innerHTML = `<main class="screen">${body}</main>${assistantSheet()}${editorSheet()}`;
   // Centraliza o dia escolhido na faixa de dias (sem rolar a página).
   const strip = app.querySelector(".strip");
   const on = strip?.querySelector(".day.on");
   if (strip && on) strip.scrollLeft = on.offsetLeft - strip.clientWidth / 2 + on.offsetWidth / 2;
-  // Cada tela tem a sua cor de fundo; a barra de status do iPhone acompanha.
-  document.body.dataset.screen = tab === "today" && !day().mode ? "chooser" : tab;
-  const page = getComputedStyle(document.body).getPropertyValue("--page").trim();
-  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", page));
   autosize();
 }
 
@@ -568,32 +606,52 @@ function autosize() {
 
 app.addEventListener("click", (e) => {
   const el = e.target.closest("[data-action]");
-  if (!el) return;
+  if (!el) {
+    // Toque fora fecha o menu.
+    if (menuOpen) {
+      menuOpen = false;
+      render();
+    }
+    return;
+  }
   const { action, id } = el.dataset;
+  if (action !== "menu-toggle") menuOpen = false;
 
   switch (action) {
-    case "tab":
-      tab = el.dataset.tab;
-      window.scrollTo(0, 0);
+    case "go-home":
+      go("home");
+      break;
+    case "go-day":
+      go("day");
+      break;
+    case "go-settings":
+      go("settings");
+      break;
+    case "strip-toggle":
+      stripOpen = !stripOpen;
+      break;
+    case "menu-toggle":
+      menuOpen = !menuOpen;
+      break;
+    case "day-go":
+      if (el.dataset.key === dayKey() && screen === "home") stripOpen = false;
+      else go("day", el.dataset.key);
       break;
     case "mode":
       day().mode = el.dataset.mode;
       break;
     case "switch-mode":
       day().mode = day().mode === "structured" ? "chaotic" : "structured";
+      go("home");
       break;
     case "reset-mode":
       day().mode = null;
-      tab = "today";
+      go("home");
       break;
     case "toggle":
     case "step":
       toggleDone(id, viewing());
       if (navigator.vibrate) navigator.vibrate(10);
-      break;
-    case "day-go":
-      viewKey = el.dataset.key === dayKey() ? null : el.dataset.key;
-      expanded = null;
       break;
     case "edit-open":
       openEditor(id);
@@ -656,7 +714,7 @@ app.addEventListener("click", (e) => {
       break;
     case "ai-settings":
       resetAssistant();
-      tab = "settings";
+      go("settings");
       break;
     case "ai-apply":
       applyPending();
