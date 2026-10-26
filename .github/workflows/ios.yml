@@ -1,0 +1,51 @@
+name: iOS
+
+on:
+  push:
+    branches: [main]
+    paths: ["ios/**", ".github/workflows/ios.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Gerar projeto Xcode
+        working-directory: ios
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Compilar sem assinatura
+        working-directory: ios
+        run: |
+          xcodebuild build \
+            -project Rotina.xcodeproj \
+            -scheme Rotina \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO
+
+      # O SideStore assina o .ipa no próprio iPhone com o Apple ID gratuito.
+      - name: Empacotar .ipa
+        working-directory: ios
+        run: |
+          mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/Rotina.app Payload/
+          zip -qr Rotina.ipa Payload
+
+      - name: Publicar na release "ios-latest"
+        working-directory: ios
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view ios-latest >/dev/null 2>&1 || \
+            gh release create ios-latest --prerelease --title "iOS (último build)" \
+              --notes "Build automático de main. Instale pelo SideStore."
+          gh release upload ios-latest Rotina.ipa --clobber

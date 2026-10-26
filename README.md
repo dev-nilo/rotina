@@ -19,4 +19,4 @@ Abra o site no Safari → Compartilhar → **Adicionar à Tela de Início**.
 python -m http.server 8765
 ```
 
-`swiftui-referencia/` guarda a primeira versão nativa em SwiftUI, sem manutenção.
+`ios/` é o app nativo em SwiftUI, que vai substituir o PWA. Veja [ios/README.md](ios/README.md).

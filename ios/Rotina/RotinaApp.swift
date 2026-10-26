@@ -15,6 +15,7 @@ struct RotinaApp: App {
                     .tabItem { Label("Por quê", systemImage: "book") }
             }
             .environment(store)
+            .tint(.orange)
         }
     }
 }
