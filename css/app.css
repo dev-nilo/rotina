@@ -21,6 +21,7 @@
   --done: var(--forest);
   --on-done: var(--lime);
   --bar: var(--ink);
+  --now-row: var(--ink);
   color-scheme: light;
 }
 
@@ -36,6 +37,7 @@
     --done: var(--lime);
     --on-done: var(--ink);
     --bar: #343b4c;
+    --now-row: var(--blue);
     color-scheme: dark;
   }
 }
@@ -101,7 +103,8 @@ section { margin-bottom: 16px; }
 }
 .steps .is-done .box { background: var(--lime); border-color: var(--lime); }
 .steps .is-done .box .icon { width: 16px; height: 16px; stroke: var(--forest); stroke-width: 3.2; }
-.steps .is-done button > span:last-child { text-decoration: line-through; opacity: 0.6; }
+.steps .is-done button { background: rgba(255, 255, 255, 0.06); }
+.steps .is-done button > span:last-child { text-decoration: line-through; text-decoration-thickness: 2px; opacity: 0.7; }
 
 /* cat-modoro (dentro do cartão Agora) */
 .cat-inline { margin-top: 14px; }
@@ -180,20 +183,20 @@ section { margin-bottom: 16px; }
   border: 2px dashed var(--on-page); color: var(--on-page); font-weight: 800; font-size: 15px;
 }
 
-/* Faixa de dias */
+/* Faixa de dias (sempre visível em Hoje e no Dia) */
 .strip {
-  position: relative; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
-  margin: -4px -16px 16px; padding: 2px 16px;
+  position: relative; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none;
+  margin: -6px -16px 14px; padding: 2px 16px;
   scroll-snap-type: x proximity;
 }
 .strip::-webkit-scrollbar { display: none; }
 .day {
-  flex: none; width: 46px; padding: 8px 0; border-radius: 999px; scroll-snap-align: center;
+  flex: none; width: 44px; padding: 6px 0; border-radius: 999px; scroll-snap-align: center;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   color: var(--on-page); position: relative;
 }
 .day small { font-size: 11px; font-weight: 800; text-transform: uppercase; opacity: 0.6; }
-.day strong { font-size: 18px; font-weight: 800; }
+.day strong { font-size: 17px; font-weight: 800; }
 .day.today { box-shadow: inset 0 0 0 2px var(--on-page); }
 .day.on { background: var(--on-page); color: var(--page); }
 .day.on small { opacity: 0.8; }
@@ -211,10 +214,10 @@ section { margin-bottom: 16px; }
   background: var(--track); padding: 12px 14px; font-size: 17px; font-weight: 600;
 }
 .ef-row { display: flex; gap: 10px; }
-.row.is-now { background: var(--ink); color: #fff; }
+.row.is-now { background: var(--now-row); color: #fff; }
 .row.is-now .time { color: var(--lime); }
 .row.is-now .row-steps { color: #c9cdd6; }
-.is-done, .is-past { opacity: 0.5; }
+.row.is-done, .row.is-past, .task.is-done { opacity: 0.5; }
 .is-done .row-title, .is-done .task-title { text-decoration: line-through; }
 .row:has(.row-steps) { border-radius: 24px; }
 .anchor { border-radius: 24px; padding: 14px 10px 14px 20px; }
@@ -264,7 +267,7 @@ section { margin-bottom: 16px; }
 .choice .muted { opacity: 0.8; }
 
 /* Por quê */
-.why { margin-top: 32px; }
+.why { margin-top: 4px; }
 .lead { font-size: 19px; font-weight: 600; line-height: 1.3; margin: 0 4px 16px; }
 .principle {
   background: var(--row); color: var(--on-row);
@@ -294,24 +297,32 @@ section { margin-bottom: 16px; }
 .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .top h1 { margin: 0; }
 .top-left { display: flex; align-items: center; gap: 4px; min-width: 0; }
-.title-btn { display: flex; align-items: center; gap: 4px; min-width: 0; padding: 8px 4px; }
-.title-btn h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.title-btn .icon { width: 22px; height: 22px; stroke-width: 2.6; flex: none; }
+.top-left h1 { padding: 8px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .icon-btn {
   flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%;
   color: var(--on-page);
 }
 .icon-btn .icon { width: 26px; height: 26px; stroke-width: 2.4; }
-.icon-btn[aria-label="Mais opções"] .icon { fill: currentColor; stroke: none; }
-.menu {
-  position: absolute; right: 16px; z-index: 5; margin-top: -8px;
-  display: flex; flex-direction: column; min-width: 240px;
-  background: var(--row); color: var(--on-row); border-radius: 20px; padding: 6px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+.icon-btn.gear .icon { stroke-width: 2; }
+.icon-btn:active { background: var(--track); }
+
+/* Atalhos discretos abaixo do cartão (à esquerda, longe do botão do assistente) */
+.quiet-links { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 14px 6px 0; }
+.quiet-links button {
+  padding: 6px 0; font-size: 15px; font-weight: 800; color: var(--on-page);
+  text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px;
 }
-.menu button { padding: 14px 16px; border-radius: 14px; font-weight: 700; text-align: left; }
-.menu button:active { background: var(--track); }
-.screen { position: relative; }
+.quiet-links button + button { font-weight: 700; opacity: 0.75; }
+
+/* Linha que leva a outra tela */
+.go-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;
+  background: var(--row); color: var(--on-row); border-radius: 28px; padding: 18px 20px; margin-bottom: 16px;
+}
+.go-row > span { display: flex; flex-direction: column; gap: 2px; }
+.go-row strong { font-size: 17px; font-weight: 800; }
+.go-row .muted { font-size: 14px; color: var(--row-muted); opacity: 1; }
+.go-row .icon { flex: none; stroke-width: 2.6; color: var(--row-muted); }
 
 .next {
   display: flex; align-items: baseline; gap: 10px; width: 100%; margin-top: 10px;
@@ -383,3 +394,8 @@ section { margin-bottom: 16px; }
 @media (prefers-color-scheme: dark) {
   .fab { background: var(--lime); color: var(--forest); }
 }
+
+/* "Pop" no item marcado agora há pouco */
+.steps .pop .box, .check.pop { animation: pop 0.18s ease-out; }
+@keyframes pop { 50% { transform: scale(1.22); } }
+@media (prefers-reduced-motion: reduce) { .pop .box, .check.pop { animation: none; } }

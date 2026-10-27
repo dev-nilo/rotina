@@ -13,14 +13,15 @@ import * as push from "./push.js";
 const app = document.getElementById("app");
 
 /**
- * Navegação: "home" (só o agora), "day" (o dia inteiro de `viewKey`) e "settings".
- * A faixa de dias e o menu "⋯" abrem por cima da tela atual.
+ * Navegação: "home" (só o agora), "day" (o dia inteiro de `viewKey`), "settings" e "why".
+ * A faixa de dias fica sempre visível em Hoje e no Dia; a engrenagem leva aos Ajustes.
  */
 let screen = "home";
 let viewKey = null;
-let stripOpen = false;
-let menuOpen = false;
+/** Bloco aberto na lista do dia. null = o bloco atual; "none" = nenhum. */
 let expanded = null;
+/** Item marcado agora há pouco: ganha a animação de "pop" no próximo render. */
+let popped = null;
 
 /** Conversa aberta com o assistente (some ao fechar). */
 const assistant = { open: false, input: "", loading: false, error: "", reply: "", pending: [], history: [] };
@@ -38,8 +39,6 @@ const schedule = () => scheduleFor(dayKey());
 function go(to, key = null) {
   screen = to;
   viewKey = key;
-  stripOpen = false;
-  menuOpen = false;
   expanded = null;
   window.scrollTo(0, 0);
 }
@@ -49,9 +48,9 @@ function go(to, key = null) {
 const ICON = {
   check: '<path d="M7 12.5l3 3 7-7"/>',
   spark: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
-  more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
   back: '<path d="M15 5l-7 7 7 7"/>',
-  down: '<path d="M6 9l6 6 6-6"/>',
+  next: '<path d="M9 5l7 7-7 7"/>',
 };
 const icon = (name) => `<svg viewBox="0 0 24 24" class="icon" aria-hidden="true">${ICON[name]}</svg>`;
 
@@ -95,30 +94,19 @@ function dayLabel(key) {
 
 // MARK: - Topo
 
-/** Título que abre a faixa de dias; voltar à esquerda fora da tela inicial; "⋯" à direita. */
-function header(title, { back = false, strip = true } = {}) {
-  const titleEl = strip
-    ? `<button class="title-btn" data-action="strip-toggle" aria-expanded="${stripOpen}"><h1>${esc(title)}</h1>${icon("down")}</button>`
-    : `<h1>${esc(title)}</h1>`;
+/**
+ * Título com "voltar" à esquerda (`back` = tela de destino) e a engrenagem à direita.
+ * Em Hoje e no Dia, a faixa de dias vem logo abaixo.
+ */
+function header(title, { back = null, strip = true, gear = true } = {}) {
   return `<header class="top">
       <div class="top-left">
-        ${back ? `<button class="icon-btn" data-action="go-home" aria-label="Voltar">${icon("back")}</button>` : ""}
-        ${titleEl}
+        ${back ? `<button class="icon-btn" data-action="go-${back}" aria-label="Voltar">${icon("back")}</button>` : ""}
+        <h1>${esc(title)}</h1>
       </div>
-      <button class="icon-btn" data-action="menu-toggle" aria-label="Mais opções" aria-expanded="${menuOpen}">${icon("more")}</button>
+      ${gear ? `<button class="icon-btn gear" data-action="go-settings" aria-label="Ajustes">${icon("gear")}</button>` : ""}
     </header>
-    ${menuOpen ? menu() : ""}
-    ${stripOpen ? dayStrip() : ""}`;
-}
-
-function menu() {
-  const mode = peekDay(dayKey())?.mode;
-  const items = [];
-  if (mode) {
-    items.push(`<button data-action="switch-mode">${mode === "structured" ? "Dia caótico: usar 3 Âncoras" : "Voltar para a agenda completa"}</button>`);
-  }
-  items.push(`<button data-action="go-settings">Ajustes e Por quê</button>`);
-  return `<nav class="menu">${items.join("")}</nav>`;
+    ${strip ? dayStrip() : ""}`;
 }
 
 /** Uma semana para trás e duas para frente; o dia na tela fica destacado. */
@@ -140,7 +128,7 @@ function dayStrip() {
 // MARK: - Componentes
 
 function checkButton(action, id, done, label) {
-  return `<button class="check ${done ? "done" : ""}" data-action="${action}" data-id="${id}" aria-label="${done ? "Desmarcar" : "Marcar"} ${esc(label)}">${done ? icon("check") : ""}</button>`;
+  return `<button class="check ${done ? "done" : ""} ${id === popped ? "pop" : ""}" data-action="${action}" data-id="${id}" aria-label="${done ? "Desmarcar" : "Marcar"} ${esc(label)}">${done ? icon("check") : ""}</button>`;
 }
 
 function focusField() {
@@ -169,15 +157,15 @@ function catInline() {
         </div>
       </div>
       <div class="controls">
-        <button class="btn primary" data-action="timer-ics">Alarme</button>
-        <button class="btn" data-action="timer-skip">${t.phase === "focus" ? "Pausar" : "Pular pausa"}</button>
+        ${state.push ? "" : `<button class="btn primary" data-action="timer-ics">Alarme</button>`}
+        <button class="btn ${state.push ? "primary" : ""}" data-action="timer-skip">${t.phase === "focus" ? "Pausar" : "Pular pausa"}</button>
         <button class="btn ghost" data-action="timer-stop">Parar</button>
       </div>
     </div>`;
 }
 
 function checklist(items) {
-  return `<ul class="steps">${items.map(({ id, text, done }) => `<li class="${done ? "is-done" : ""}">
+  return `<ul class="steps">${items.map(({ id, text, done }) => `<li class="${done ? "is-done" : ""} ${id === popped ? "pop" : ""}">
       <button data-action="step" data-id="${id}">
         <span class="box">${done ? icon("check") : ""}</span><span>${esc(text)}</span>
       </button>
@@ -236,7 +224,7 @@ function nextLine(sched) {
     </button>`;
 }
 
-/** O dia inteiro numa lista compacta. Toque num bloco para ver os passos e editar. */
+/** O dia inteiro numa lista compacta. O bloco atual já vem aberto; toque nos outros para ver os passos e editar. */
 function dayList(sched) {
   const wake = state.settings.wake;
   const key = viewing();
@@ -247,7 +235,7 @@ function dayList(sched) {
     const done = blockDone(b);
     const isNow = mo?.kind === "block" && mo.block.id === b.id;
     const past = mo ? mo.m >= b.end && !isNow : key < today;
-    const open = expanded === b.id;
+    const open = expanded === b.id || (isNow && expanded === null);
     return `<div class="row ${isNow ? "is-now" : ""} ${done ? "is-done" : ""} ${past && !done ? "is-past" : ""}">
         <button class="row-main" data-action="expand" data-id="${b.id}" aria-expanded="${open}">
           <span class="time">${clock(b.start, wake)}</span>
@@ -341,7 +329,10 @@ function homeScreen() {
     ${focusField()}
     ${card}
     ${d.mode === "structured" ? nextLine(sched) : ""}
-    <button class="link" data-action="go-day">Ver o dia</button>
+    <nav class="quiet-links">
+      <button data-action="go-day">Ver o dia</button>
+      <button data-action="switch-mode">${d.mode === "structured" ? "Dia caótico? Usar 3 âncoras" : "Voltar à agenda completa"}</button>
+    </nav>
     ${fab()}`;
 }
 
@@ -352,7 +343,7 @@ function dayScreen() {
   const body = mode === "chaotic"
     ? `${anchorsList()}${key === dayKey() ? `${taskList(true)}${taskList(false)}` : ""}`
     : dayList(scheduleFor(key));
-  return `${header(dayLabel(key), { back: true })}
+  return `${header(dayLabel(key), { back: "home" })}
     ${key === dayKey() ? "" : focusField()}
     ${body}
     ${fab()}`;
@@ -363,7 +354,7 @@ function settingsScreen() {
   const execLeft = execMinutes(schedule());
   const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
 
-  return `${header("Ajustes", { back: true, strip: false })}
+  return `${header("Ajustes", { back: "home", strip: false, gear: false })}
     <section class="form">
       <label class="field"><span>Acordar às</span><input type="time" data-setting="wake" value="${clock(0, s.wake)}"></label>
       <div class="field"><span>Dormir às</span><span class="muted num">${clock(AWAKE_SPAN, s.wake)}</span></div>
@@ -387,13 +378,18 @@ function settingsScreen() {
         : `<label class="field"><span>Chave da API</span><input type="password" data-apikey placeholder="sk-ant-…" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
            <p class="hint">Para o botão do assistente. Crie uma chave em console.anthropic.com → API Keys e cole aqui. Fica salva só neste aparelho; cada pedido custa poucos centavos.</p>`}
     </section>
-    <section class="form">
+    ${state.push ? "" : `<section class="form">
       <button class="btn primary wide" data-action="export-ics">Adicionar rotina ao Calendário</button>
       <p class="hint">Cria um evento diário para cada bloco, com alerta no início. Se mudar os horários, apague os eventos antigos e adicione de novo.</p>
-    </section>
+    </section>`}
     ${standalone ? "" : `<section class="form"><p class="hint">Para instalar: no Safari, toque em Compartilhar e depois em “Adicionar à Tela de Início”.</p></section>`}
-    <button class="link small-link" data-action="reset-mode">Escolher de novo o modo de hoje</button>
-    ${whySection()}`;
+    <button class="go-row" data-action="go-why"><span><strong>Por quê</strong><span class="muted">Os livros por trás da rotina</span></span>${icon("next")}</button>
+    <button class="link small-link" data-action="reset-mode">Escolher de novo o modo de hoje</button>`;
+}
+
+/** As ideias dos livros, numa tela própria (aberta pelos Ajustes). */
+function whyScreen() {
+  return `${header("Por quê", { back: "settings", strip: false, gear: false })}${whySection()}`;
 }
 
 let pushError = "";
@@ -416,7 +412,6 @@ function pushSection(standalone) {
 
 function whySection() {
   return `<section class="why">
-      <div class="section-head"><span class="eyebrow">Por quê</span></div>
       <p class="lead">Alinhar o trabalho mais caro do cérebro ao ritmo biológico, ir fundo numa coisa só e cuidar do corpo que vai carregar tudo isso por décadas.</p>
       ${PRINCIPLES.map((p) => `<article class="principle">
         <div class="principle-head"><strong>${esc(p.book)}</strong><span class="faint small">${esc(p.author)}</span></div>
@@ -606,8 +601,9 @@ async function sendToAssistant(text) {
 // MARK: - Render
 
 function render() {
-  const body = screen === "home" ? homeScreen() : screen === "day" ? dayScreen() : settingsScreen();
-  app.innerHTML = `<main class="screen">${body}</main>${assistantSheet()}${editorSheet()}`;
+  const screens = { home: homeScreen, day: dayScreen, settings: settingsScreen, why: whyScreen };
+  app.innerHTML = `<main class="screen">${screens[screen]()}</main>${assistantSheet()}${editorSheet()}`;
+  popped = null;
   // Centraliza o dia escolhido na faixa de dias (sem rolar a página).
   const strip = app.querySelector(".strip");
   const on = strip?.querySelector(".day.on");
@@ -628,16 +624,8 @@ function autosize() {
 
 app.addEventListener("click", (e) => {
   const el = e.target.closest("[data-action]");
-  if (!el) {
-    // Toque fora fecha o menu.
-    if (menuOpen) {
-      menuOpen = false;
-      render();
-    }
-    return;
-  }
+  if (!el) return;
   const { action, id } = el.dataset;
-  if (action !== "menu-toggle") menuOpen = false;
 
   switch (action) {
     case "go-home":
@@ -649,15 +637,11 @@ app.addEventListener("click", (e) => {
     case "go-settings":
       go("settings");
       break;
-    case "strip-toggle":
-      stripOpen = !stripOpen;
-      break;
-    case "menu-toggle":
-      menuOpen = !menuOpen;
+    case "go-why":
+      go("why");
       break;
     case "day-go":
-      if (el.dataset.key === dayKey() && screen === "home") stripOpen = false;
-      else go("day", el.dataset.key);
+      go("day", el.dataset.key);
       break;
     case "mode":
       day().mode = el.dataset.mode;
@@ -673,7 +657,7 @@ app.addEventListener("click", (e) => {
     case "toggle":
     case "step":
       toggleDone(id, viewing());
-      if (navigator.vibrate) navigator.vibrate(10);
+      popped = id;
       break;
     case "edit-open":
       openEditor(id);
@@ -690,11 +674,11 @@ app.addEventListener("click", (e) => {
     case "toggle-block": {
       const block = scheduleFor(viewing()).find((b) => b.id === id);
       if (block) toggleBlock(block);
-      if (navigator.vibrate) navigator.vibrate(10);
+      popped = id;
       break;
     }
     case "expand":
-      expanded = expanded === id ? null : id;
+      expanded = el.getAttribute("aria-expanded") === "true" ? "none" : id;
       break;
     case "set": {
       const raw = el.dataset.value;
