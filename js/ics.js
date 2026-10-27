@@ -23,34 +23,40 @@ function calendar(events) {
 }
 
 /**
- * A rotina inteira como eventos diários, cada um com alerta no início.
- * O treino muda por dia da semana, então no Calendário ele aparece só como "Treino".
+ * A semana inteira como eventos semanais, cada um com alerta no início.
+ * `scheduleOf(weekday)` dá a agenda base de cada dia da semana (0 = domingo).
  */
-export function routineICS(schedule, wake) {
-  const base = logicalDate();
-  base.setHours(0, 0, 0, 0);
+export function routineICS(scheduleOf, wake) {
+  const today = logicalDate();
+  today.setHours(0, 0, 0, 0);
   const created = utcStamp(new Date());
 
-  const events = schedule.map((b) => {
-    const start = new Date(base.getTime() + (wake + b.start) * 60000);
-    const end = new Date(base.getTime() + (wake + b.end) * 60000);
-    return [
-      "BEGIN:VEVENT",
-      `UID:rotina-${b.id}@rotina`,
-      `DTSTAMP:${created}`,
-      `DTSTART:${localStamp(start)}`,
-      `DTEND:${localStamp(end)}`,
-      "RRULE:FREQ=DAILY",
-      `SUMMARY:${escape(b.id === "train" ? "Treino" : b.title)}`,
-      `DESCRIPTION:${escape(b.id === "train" ? "Veja o treino de hoje no app." : b.steps.join(" · "))}`,
-      "BEGIN:VALARM",
-      "ACTION:DISPLAY",
-      `DESCRIPTION:${escape(b.id === "train" ? "Treino" : b.title)}`,
-      "TRIGGER:PT0M",
-      "END:VALARM",
-      "END:VEVENT",
-    ].join("\r\n");
-  });
+  const events = [];
+  for (let i = 0; i < 7; i++) {
+    const base = new Date(today);
+    base.setDate(today.getDate() + i);
+    const weekday = base.getDay();
+    for (const b of scheduleOf(weekday)) {
+      const start = new Date(base.getTime() + (wake + b.start) * 60000);
+      const end = new Date(base.getTime() + (wake + b.end) * 60000);
+      events.push([
+        "BEGIN:VEVENT",
+        `UID:rotina-${weekday}-${b.id}@rotina`,
+        `DTSTAMP:${created}`,
+        `DTSTART:${localStamp(start)}`,
+        `DTEND:${localStamp(end)}`,
+        "RRULE:FREQ=WEEKLY",
+        `SUMMARY:${escape(b.title)}`,
+        `DESCRIPTION:${escape(b.steps.join(" · "))}`,
+        "BEGIN:VALARM",
+        "ACTION:DISPLAY",
+        `DESCRIPTION:${escape(b.title)}`,
+        "TRIGGER:PT0M",
+        "END:VALARM",
+        "END:VEVENT",
+      ].join("\r\n"));
+    }
+  }
   return calendar(events);
 }
 

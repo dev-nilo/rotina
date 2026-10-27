@@ -3,7 +3,7 @@ import {
   buildSchedule, execMinutes, momentAt, clock, parseClock, duration,
 } from "./routine.js";
 import {
-  state, save, now, day, dayKey, peekDay, logicalDate, toggleDone, isDone, getApiKey, setApiKey,
+  state, save, now, day, dayKey, peekDay, toggleDone, isDone, getApiKey, setApiKey,
 } from "./store.js";
 import * as cat from "./catmodoro.js";
 import { routineICS, phaseEndICS, openICS } from "./ics.js";
@@ -351,7 +351,8 @@ function dayScreen() {
 
 function settingsScreen() {
   const s = state.settings;
-  const execLeft = execMinutes(schedule());
+  // Sempre de um dia útil: o fim de semana não tem bloco de execução.
+  const execLeft = execMinutes(buildSchedule(s, 1));
   const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
 
   return `${header("Ajustes", { back: "home", strip: false, gear: false })}
@@ -380,7 +381,7 @@ function settingsScreen() {
     </section>
     ${state.push ? "" : `<section class="form">
       <button class="btn primary wide" data-action="export-ics">Adicionar rotina ao Calendário</button>
-      <p class="hint">Cria um evento diário para cada bloco, com alerta no início. Se mudar os horários, apague os eventos antigos e adicione de novo.</p>
+      <p class="hint">Cria os blocos de cada dia da semana como eventos semanais, com alerta no início. Se mudar os horários, apague os eventos antigos e adicione de novo.</p>
     </section>`}
     ${standalone ? "" : `<section class="form"><p class="hint">Para instalar: no Safari, toque em Compartilhar e depois em “Adicionar à Tela de Início”.</p></section>`}
     <button class="go-row" data-action="go-why"><span><strong>Por quê</strong><span class="muted">Os livros por trás da rotina</span></span>${icon("next")}</button>
@@ -699,7 +700,7 @@ app.addEventListener("click", (e) => {
       return;
     case "export-ics":
       // A rotina base, sem os ajustes pontuais do assistente.
-      openICS(routineICS(buildSchedule(state.settings, logicalDate().getDay()), state.settings.wake), "rotina.ics");
+      openICS(routineICS((weekday) => buildSchedule(state.settings, weekday), state.settings.wake), "rotina.ics");
       return;
     case "task-toggle": {
       const t = state.tasks.find((t) => t.id === id);

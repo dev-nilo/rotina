@@ -20,7 +20,7 @@ export const BLOCKS = {
 
 /** Treino do dia, alternando força, zona 2 e VO2 máx (Outlive). Índice = dia da semana. */
 const WORKOUTS = [
-  { kind: "Descanso ativo", steps: ["Caminhada longa ao ar livre"] },
+  { kind: "Descanso ativo", steps: ["Caminhada longa ao ar livre", "Alongamento"] },
   { kind: "Força", steps: ["Aquecer 10 min", "Agachar, empurrar, puxar"] },
   { kind: "Zona 2", steps: ["45 min em ritmo de conversa"] },
   { kind: "Força", steps: ["Aquecer 10 min", "Levantar e carregar peso"] },
@@ -112,6 +112,50 @@ const SUNSET_START = 870;
 /** Transição entre o desligamento e o treino. */
 const SHUTDOWN_GAP = 15;
 
+/**
+ * Compromissos fixos da semana, em horário de relógio. Índice = dia da semana.
+ * Os blocos que eles cobrem são encurtados ou somem.
+ */
+const FIXED = {
+  1: [{ id: "society", at: "19:30", to: "21:00", title: "Society", steps: [] }],
+  2: [{ id: "futsal", at: "21:00", to: "23:00", title: "Futsal", steps: [] }],
+};
+
+/**
+ * Fim de semana com agenda própria. Horários para quem acorda 06:30:
+ * se o despertar mudar, o dia inteiro se desloca junto.
+ * Despertar e treino vêm do cálculo normal (regra do fim de semana e treino do dia).
+ */
+const WEEKEND = {
+  6: [
+    ["wake", "06:30", "06:50"],
+    ["miracle", "06:50", "07:10", "Manhã", ["5 min de silêncio", "5 min de leitura", "Intenção do dia"]],
+    ["food", "07:10", "08:00", "Café da manhã", ["Café da manhã com calma", "Hidratação"]],
+    ["study", "08:00", "11:30", "Estudos", ["Leitura aprofundada", "Cursos e novos aprendizados", "Sem interrupções de trabalho"]],
+    ["free", "11:30", "12:00", "Tempo livre", ["Descompressão", "Música", "Organização pessoal leve"]],
+    ["lunch", "12:00", "13:30", "Almoço", ["Refeição em família / com calma", "Descanso"]],
+    ["family", "13:30", "15:00", "Atividade em família", ["Momento dedicado à família", "Passeio", "Convivência"]],
+    ["hobby", "15:00", "17:00", "Hobbies", ["Prática de hobbies", "Projetos criativos", "Lazer e descanso"]],
+    ["train", "17:15", "18:30"],
+    ["tribe", "18:30", "21:00", "Vida pessoal", ["Banho", "Jantar sem tela", "Conversa e lazer"]],
+    ["sunset", "21:00", "22:30", "Desacelerar", ["Luz baixa", "Sem telas de trabalho", "Leitura leve"]],
+  ],
+  0: [
+    ["wake", "06:30", "06:50"],
+    ["miracle", "06:50", "07:10", "Manhã", ["5 min de silêncio", "5 min de oração e leitura", "Intenção do dia"]],
+    ["food", "07:10", "08:00", "Café da manhã", ["Café da manhã com calma", "Preparação para o culto"]],
+    ["church", "08:00", "11:00", "Culto", ["Participação no culto matutino", "Comunhão"]],
+    ["free", "11:00", "12:00", "Tempo livre", ["Retorno com calma", "Convivência", "Descompressão"]],
+    ["lunch", "12:00", "13:30", "Almoço", ["Refeição em família", "Descanso"]],
+    ["rest", "13:30", "15:00", "Descanso", ["Sesta", "Leitura relaxante", "Desconexão"]],
+    ["family", "15:00", "17:00", "Lazer e família", ["Tempo com a família", "Convivência", "Planejar a semana com leveza"]],
+    ["train", "17:15", "18:30"],
+    ["church2", "19:00", "21:00", "Culto", ["Participação no culto noturno", "Comunhão"]],
+    ["sunset", "21:00", "22:30", "Desacelerar", ["Luz baixa", "Sem telas de trabalho", "Leitura leve e descanso"]],
+  ],
+};
+const WEEKEND_WAKE = 6 * 60 + 30;
+
 /** Minutos entre dois horários do relógio, sempre entre 0 e 1439. */
 export function minutesBetween(from, to) {
   return (((to - from) % 1440) + 1440) % 1440;
@@ -119,38 +163,67 @@ export function minutesBetween(from, to) {
 
 /**
  * Monta a agenda do dia a partir dos ajustes.
- * `weekday` (0 = domingo) escolhe o treino do dia.
+ * `weekday` (0 = domingo) escolhe o treino, a agenda do fim de semana e os compromissos fixos.
  * Devolve [{ id, start, end, title, steps }] com start/end em minutos desde o despertar.
  */
 export function buildSchedule(settings, weekday = 1) {
-  const out = [];
-  let t = 0;
-  const push = (id, len, extra = {}) => {
-    if (len > 0) out.push({ id, start: t, end: t + len, ...BLOCKS[id], ...extra });
-    t += Math.max(0, len);
-  };
-
-  // Fim de semana: no máximo 60 min mais tarde (regra contra o jet lag social).
-  const weekend = weekday === 0 || weekday === 6;
-  push("wake", 20, weekend ? { steps: [`Levantar até ${clock(60, settings.wake)}`, ...BLOCKS.wake.steps.slice(1)] } : {});
-  push("miracle", 20);
-  push("food", 50);
-  // 2 ciclos: 90 + 15 de pausa + 90 + 15 de caminhada. 1 ciclo: 120.
-  const twoCycles = settings.deepCycles === 2;
-  push("deep", twoCycles ? 210 : 120, {
-    steps: [...BLOCKS.deep.steps, twoCycles ? "2 × 90 min, pausa de 15" : "1 ciclo de 90–120 min"],
-  });
-  push("triage", 30);
-  push("light", LUNCH_START - t);
-  push("lunch", settings.lunch);
-  push("valley", 90);
-  push("exec", minutesBetween(settings.wake, settings.shutdown) - t);
-  t += SHUTDOWN_GAP;
   const workout = WORKOUTS[weekday];
-  push("train", settings.workout, { title: `Treino · ${workout.kind}`, steps: workout.steps });
-  push("tribe", SUNSET_START - t);
-  push("sunset", AWAKE_SPAN - t);
+  const train = { title: `Treino · ${workout.kind}`, steps: workout.steps };
+  // Fim de semana: no máximo 60 min mais tarde (regra contra o jet lag social).
+  const wake = { ...BLOCKS.wake, steps: [`Levantar até ${clock(60, settings.wake)}`, ...BLOCKS.wake.steps.slice(1)] };
+
+  let out;
+  if (WEEKEND[weekday]) {
+    const at = (hhmm) => parseClock(hhmm) - WEEKEND_WAKE;
+    out = WEEKEND[weekday].map(([id, from, to, title, steps]) => ({
+      id, start: at(from), end: at(to),
+      ...(id === "wake" ? wake : id === "train" ? train : { title, steps }),
+    }));
+  } else {
+    out = [];
+    let t = 0;
+    const push = (id, len, extra = {}) => {
+      if (len > 0) out.push({ id, start: t, end: t + len, ...BLOCKS[id], ...extra });
+      t += Math.max(0, len);
+    };
+    push("wake", 20);
+    push("miracle", 20);
+    push("food", 50);
+    // 2 ciclos: 90 + 15 de pausa + 90 + 15 de caminhada. 1 ciclo: 120.
+    const twoCycles = settings.deepCycles === 2;
+    push("deep", twoCycles ? 210 : 120, {
+      steps: [...BLOCKS.deep.steps, twoCycles ? "2 × 90 min, pausa de 15" : "1 ciclo de 90–120 min"],
+    });
+    push("triage", 30);
+    push("light", LUNCH_START - t);
+    push("lunch", settings.lunch);
+    push("valley", 90);
+    push("exec", minutesBetween(settings.wake, settings.shutdown) - t);
+    t += SHUTDOWN_GAP;
+    push("train", settings.workout, train);
+    push("tribe", SUNSET_START - t);
+    push("sunset", AWAKE_SPAN - t);
+  }
+
+  for (const f of FIXED[weekday] ?? []) {
+    const start = minutesBetween(settings.wake, parseClock(f.at));
+    out = insert(out, { id: f.id, start, end: start + minutesBetween(parseClock(f.at), parseClock(f.to)), title: f.title, steps: f.steps });
+  }
   return out;
+}
+
+/** Encaixa um bloco na agenda, encurtando ou tirando os que ele cobre. */
+function insert(schedule, block) {
+  const { start, end } = block;
+  const out = schedule.flatMap((b) => {
+    if (b.end <= start || b.start >= end) return [b];
+    const parts = [];
+    if (b.start < start) parts.push({ ...b, end: start });
+    if (b.end > end) parts.push({ ...b, id: parts.length ? `${b.id}~2` : b.id, start: end });
+    return parts;
+  });
+  out.push(block);
+  return out.sort((a, b) => a.start - b.start);
 }
 
 /**
@@ -171,14 +244,7 @@ export function applyOps(schedule, ops = [], wake) {
       const start = minutesBetween(wake, parseClock(op.start));
       let end = minutesBetween(wake, parseClock(op.end));
       if (end <= start) end = start + 60;
-      out = out.flatMap((b) => {
-        if (b.end <= start || b.start >= end) return [b];
-        const parts = [];
-        if (b.start < start) parts.push({ ...b, end: start });
-        if (b.end > end) parts.push({ ...b, id: parts.length ? `${b.id}~2` : b.id, start: end });
-        return parts;
-      });
-      out.push({ id: op.id, start, end, title: op.title, steps: op.steps, changed: true, event: true });
+      out = insert(out, { id: op.id, start, end, title: op.title, steps: op.steps, changed: true, event: true });
     }
   }
   return out.sort((a, b) => a.start - b.start);
