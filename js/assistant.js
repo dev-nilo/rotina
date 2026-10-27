@@ -116,6 +116,8 @@ export async function ask(apiKey, history, text) {
     if (err instanceof Anthropic.PermissionDeniedError) throw new Error("Essa chave não tem permissão para usar o Claude.");
     if (err instanceof Anthropic.RateLimitError) throw new Error("Muitos pedidos seguidos. Tente de novo em instantes.");
     if (err instanceof Anthropic.APIConnectionError) throw new Error("Sem conexão com o Claude. Confira a internet.");
+    // 400 é erro do pedido, não instabilidade: mostrar o motivo que a API deu.
+    if (err instanceof Anthropic.BadRequestError) throw new Error(`O Claude recusou o pedido: ${err.error?.error?.message ?? err.message}`);
     if (err instanceof Anthropic.APIError) throw new Error(`O Claude devolveu um erro (${err.status ?? "?"}). Tente de novo.`);
     throw err;
   }
