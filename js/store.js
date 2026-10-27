@@ -19,6 +19,7 @@ function fresh() {
     days: {},
     tasks: [], // { id, title, heavy, done }
     timer: null, // ver catmodoro.js
+    push: false, // avisos ligados neste aparelho (ver push.js)
   };
 }
 

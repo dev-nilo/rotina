@@ -1,5 +1,7 @@
 # Rotina para iPhone
 
+> **Pausado.** O PWA voltou a ser o app principal; veja o README da raiz.
+
 App nativo em SwiftUI (iOS 17+). Não precisa de Mac nem de conta paga da Apple:
 
 - o **GitHub Actions** gera o projeto com o [XcodeGen](https://github.com/yonaskolb/XcodeGen)

@@ -1,5 +1,5 @@
 // Cache offline: tenta a rede primeiro (para pegar atualizações) e cai no cache sem internet.
-const CACHE = "rotina-v6";
+const CACHE = "rotina-v7";
 const FILES = [
   "./",
   "index.html",
@@ -11,6 +11,7 @@ const FILES = [
   "js/catmodoro.js",
   "js/ics.js",
   "js/assistant.js",
+  "js/push.js",
   "icons/icon-180.png",
   "icons/icon-192.png",
   "icons/icon-512.png",
@@ -40,5 +41,24 @@ self.addEventListener("fetch", (e) => {
         return res;
       })
       .catch(() => caches.match(e.request, { ignoreSearch: true }))
+  );
+});
+
+// Avisos enviados pelo Worker (ver js/push.js).
+self.addEventListener("push", (e) => {
+  const data = e.data?.json() ?? {};
+  e.waitUntil(
+    self.registration.showNotification(data.title ?? "Rotina", {
+      body: data.body ?? "",
+      tag: data.tag,
+      icon: "icons/icon-192.png",
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: "window" }).then((list) => (list[0] ? list[0].focus() : self.clients.openWindow("./")))
   );
 });

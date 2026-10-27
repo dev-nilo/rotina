@@ -8,6 +8,7 @@ import {
 import * as cat from "./catmodoro.js";
 import { routineICS, phaseEndICS, openICS } from "./ics.js";
 import { ask, scheduleFor, splitOps, SETTING_LABELS } from "./assistant.js";
+import * as push from "./push.js";
 
 const app = document.getElementById("app");
 
@@ -378,6 +379,7 @@ function settingsScreen() {
     <section class="form">
       <div class="field"><span>cat-modoro</span>${segmented("timerPreset", [["90/15", "90/15"], ["25/5", "25/5"]])}</div>
     </section>
+    ${pushSection(standalone)}
     <section class="form">
       ${getApiKey()
         ? `<div class="field"><span>Assistente</span><button class="btn small-btn" data-action="remove-key">Remover chave</button></div>
@@ -392,6 +394,24 @@ function settingsScreen() {
     ${standalone ? "" : `<section class="form"><p class="hint">Para instalar: no Safari, toque em Compartilhar e depois em “Adicionar à Tela de Início”.</p></section>`}
     <button class="link small-link" data-action="reset-mode">Escolher de novo o modo de hoje</button>
     ${whySection()}`;
+}
+
+let pushError = "";
+
+function pushSection(standalone) {
+  if (!push.supported()) {
+    return `<section class="form"><p class="hint">${standalone
+      ? "Avisos precisam do iOS 16.4 ou mais novo."
+      : "Para receber avisos, instale o app na Tela de Início e abra por lá."}</p></section>`;
+  }
+  return `<section class="form">
+      ${state.push
+        ? `<div class="field"><span>Avisos</span><button class="btn small-btn" data-action="push-off">Desligar</button></div>
+           <p class="hint">Aviso no início de cada bloco e no fim do cat-modoro. Nos dias caóticos, só o cat-modoro.</p>`
+        : `<button class="btn primary wide" data-action="push-on">Ativar avisos</button>
+           <p class="hint">Aviso no início de cada bloco e no fim do cat-modoro, mesmo com o app fechado.</p>`}
+      ${pushError ? `<p class="hint warn">${esc(pushError)}</p>` : ""}
+    </section>`;
 }
 
 function whySection() {
@@ -593,6 +613,8 @@ function render() {
   const on = strip?.querySelector(".day.on");
   if (strip && on) strip.scrollLeft = on.offsetLeft - strip.clientWidth / 2 + on.offsetWidth / 2;
   autosize();
+  // Toda mudança de estado passa por aqui; o push só usa a rede se os avisos mudaram.
+  push.sync();
 }
 
 function autosize() {
@@ -729,6 +751,17 @@ app.addEventListener("click", (e) => {
     case "remove-key":
       setApiKey("");
       break;
+    case "push-on":
+      pushError = "";
+      push.enable()
+        .then((ok) => { if (!ok) pushError = "Permissão negada. Libere em Ajustes do iPhone → Notificações → Rotina."; })
+        .catch((err) => { state.push = false; pushError = `Não deu para ativar: ${err.message}`; })
+        .finally(() => { save(); render(); });
+      return;
+    case "push-off":
+      pushError = "";
+      push.disable().finally(render);
+      return;
   }
   save();
   render();
