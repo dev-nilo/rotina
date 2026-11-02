@@ -215,6 +215,29 @@ export function applyOps(schedule, ops = [], wake) {
   return out.sort((a, b) => a.start - b.start);
 }
 
+/** Feriados nacionais, mais Carnaval e Corpus Christi, que costumam ser folga. Nome ou null. */
+export function holidayName(key) {
+  const fixed = {
+    "01-01": "Confraternização Universal", "04-21": "Tiradentes", "05-01": "Dia do Trabalho",
+    "09-07": "Independência", "10-12": "Nossa Senhora Aparecida", "11-02": "Finados",
+    "11-15": "Proclamação da República", "11-20": "Consciência Negra", "12-25": "Natal",
+  };
+  if (fixed[key.slice(5)]) return fixed[key.slice(5)];
+  const [y, m, d] = key.split("-").map(Number);
+  const fromEaster = Math.round((Date.UTC(y, m - 1, d) - easter(y)) / 86400000);
+  return { [-48]: "Carnaval", [-47]: "Carnaval", [-2]: "Sexta-feira Santa", 60: "Corpus Christi" }[fromEaster] ?? null;
+}
+
+/** Domingo de Páscoa (algoritmo de Meeus/Jones/Butcher), em ms UTC. */
+function easter(y) {
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100;
+  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7, n = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * n + 114) / 31), day = ((h + l - 7 * n + 114) % 31) + 1;
+  return Date.UTC(y, month - 1, day);
+}
+
 /** Dia da semana (0 = domingo) de uma chave "yyyy-mm-dd". */
 export function weekdayOf(key) {
   return new Date(`${key}T12:00:00`).getDay();

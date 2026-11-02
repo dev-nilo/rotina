@@ -1,13 +1,13 @@
 import {
   ANCHORS, PRINCIPLES, AWAKE_SPAN,
-  buildSchedule, momentAt, clock, parseClock, duration,
+  buildSchedule, holidayName, momentAt, clock, parseClock, duration,
 } from "./routine.js";
 import {
   state, save, now, day, dayKey, peekDay, toggleDone, isDone, getApiKey, setApiKey,
 } from "./store.js";
 import * as cat from "./catmodoro.js";
 import { routineICS, phaseEndICS, openICS } from "./ics.js";
-import { ask, scheduleFor, splitOps, SETTING_LABELS } from "./assistant.js";
+import { ask, scheduleFor, isHoliday, splitOps, SETTING_LABELS } from "./assistant.js";
 import * as push from "./push.js";
 
 const app = document.getElementById("app");
@@ -332,8 +332,19 @@ function homeScreen() {
     <nav class="quiet-links">
       <button data-action="go-day">Ver o dia</button>
       <button data-action="switch-mode">${d.mode === "structured" ? "Dia caótico? Usar 3 âncoras" : "Voltar à agenda completa"}</button>
+      ${holidayLink(dayKey())}
     </nav>
     ${fab()}`;
+}
+
+/** Marcar ou desmarcar feriado; só faz diferença de segunda a sexta. */
+function holidayLink(key) {
+  const weekday = keyDate(key).getDay();
+  if (weekday === 0 || weekday === 6) return "";
+  const name = holidayName(key);
+  return `<button data-action="holiday" data-key="${key}">${isHoliday(key)
+    ? `${esc(name ?? "Feriado")}: rotina de sábado. Usar a normal`
+    : "Feriado? Usar rotina de sábado"}</button>`;
 }
 
 /** O dia inteiro (hoje ou outra data), com edição. */
@@ -343,9 +354,11 @@ function dayScreen() {
   const body = mode === "chaotic"
     ? `${anchorsList()}${key === dayKey() ? `${taskList(true)}${taskList(false)}` : ""}`
     : dayList(scheduleFor(key));
+  const link = holidayLink(key);
   return `${header(dayLabel(key), { back: "home" })}
     ${key === dayKey() ? "" : focusField()}
     ${body}
+    ${link ? `<nav class="quiet-links">${link}</nav>` : ""}
     ${fab()}`;
 }
 
@@ -641,6 +654,9 @@ app.addEventListener("click", (e) => {
     case "switch-mode":
       day().mode = day().mode === "structured" ? "chaotic" : "structured";
       go("home");
+      break;
+    case "holiday":
+      day(el.dataset.key).holiday = !isHoliday(el.dataset.key);
       break;
     case "reset-mode":
       day().mode = null;

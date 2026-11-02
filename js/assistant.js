@@ -2,7 +2,7 @@
 // e devolve ajustes na rotina para o usuário aprovar.
 // Roda direto do iPhone com a chave da API do próprio usuário (sem servidor).
 
-import { buildSchedule, applyOps, clock, weekdayOf } from "./routine.js";
+import { buildSchedule, applyOps, clock, weekdayOf, holidayName } from "./routine.js";
 import { state, dayKey, now, peekDay } from "./store.js";
 
 // O SDK só é baixado quando o assistente é usado; o resto do app continua offline.
@@ -66,9 +66,16 @@ async function loadSDK() {
   return sdk;
 }
 
+/** Feriado detectado ou marcado à mão; a marcação manual vale mais. */
+export function isHoliday(key) {
+  return peekDay(key)?.holiday ?? holidayName(key) !== null;
+}
+
 /** Agenda de um dia já com os ajustes guardados (e os pendentes, para a prévia). */
 export function scheduleFor(key, settings = state.settings, extraOps = []) {
-  const base = buildSchedule(weekdayOf(key));
+  // Feriado em dia útil segue a rotina de sábado.
+  const weekday = weekdayOf(key);
+  const base = buildSchedule(isHoliday(key) && weekday >= 1 && weekday <= 5 ? 6 : weekday);
   return applyOps(base, [...(peekDay(key)?.ops ?? []), ...extraOps], settings.wake);
 }
 
@@ -80,7 +87,7 @@ function context() {
   for (let i = 0; i < 7; i++) {
     const key = dayKey(new Date(now().getTime() + i * 86400000));
     const date = new Date(`${key}T12:00:00`);
-    lines.push(`\n${key} (${weekday.format(date)}${i === 0 ? ", hoje" : i === 1 ? ", amanhã" : ""}):`);
+    lines.push(`\n${key} (${weekday.format(date)}${i === 0 ? ", hoje" : i === 1 ? ", amanhã" : ""}${isHoliday(key) ? ", feriado" : ""}):`);
     for (const b of scheduleFor(key)) {
       lines.push(`  ${b.id} ${clock(b.start, s.wake)}–${clock(b.end, s.wake)} ${b.title}`);
     }

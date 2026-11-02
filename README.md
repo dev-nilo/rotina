@@ -7,6 +7,7 @@ e *A Sociedade do Cansaço*.
 - **Hoje**: escolha entre dia estruturado (agenda completa) ou caótico (3 Âncoras).
 - **cat-modoro**: timer de foco do Deep Work (90/15 ou 25/5).
 - **Semana padrão**: uma agenda por dia da semana, em `WEEK` (`js/routine.js`).
+  Feriados nacionais em dia útil seguem a rotina de sábado; dá para marcar ou desmarcar à mão.
 - **Ajustes**: horário de acordar (desloca a semana inteira), cat-modoro, avisos e
   exportação da rotina para o Calendário (.ics).
 
