@@ -133,7 +133,7 @@ function checkButton(action, id, done, label) {
 
 function focusField() {
   return `<section class="focus">
-      <span class="eyebrow">Única Coisa</span>
+      <span class="eyebrow">Prioridade</span>
       <textarea rows="1" data-input="focus" placeholder="Toque para definir">${esc(peekDay(viewing())?.focus ?? "")}</textarea>
     </section>`;
 }
@@ -792,7 +792,7 @@ app.addEventListener("submit", (e) => {
   app.querySelector(`[data-form=task][data-heavy="${form.dataset.heavy}"] input`)?.focus();
 });
 
-// Enter no campo da Única Coisa fecha o teclado.
+// Enter no campo da prioridade fecha o teclado.
 app.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && e.target.dataset.input === "focus") {
     e.preventDefault();

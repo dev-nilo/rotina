@@ -8,11 +8,11 @@
 const WAKE = ["wake", "06:30", "06:50", "Despertar", ["Levantar no 1º alarme", "500 ml de água", "10 min de sol, sem óculos", "Mobilidade + 60 s num pé só"]];
 const MORNING = ["miracle", "06:50", "07:10", "Manhã", ["5 min de respiração lenta", "Nomear energia de 1 a 10", "Ler 1 ideia e explicar em voz alta"]];
 const FOOD = ["food", "07:10", "08:00", "Café da manhã", ["30 g de proteína + gordura boa", "Café só no Deep Work"]];
-const DEEP = ["deep", "08:00", "11:30", "Deep Work", ["Celular em outro cômodo", "10 min no papel: lembrar e modelar", "2 × 90 min na Única Coisa", "Pausa de 15 olhando longe"]];
+const DEEP = ["deep", "08:00", "11:30", "Deep Work", ["Celular em outro cômodo", "10 min no papel: lembrar e modelar", "2 × 90 min na prioridade", "Pausa de 15 olhando longe"]];
 const TRIAGE = ["triage", "11:30", "12:00", "Mensagens", ["E-mails e mensagens de uma vez", "Menos de 2 min: resolver já", "Fechar todas as abas"]];
 const LUNCH = ["lunch", "12:00", "13:30", "Almoço", ["Proteína e vegetais", "15 min de sol, sem fone"]];
 const VALLEY = ["valley", "13:30", "15:00", "Operacional", ["Reuniões e tarefas mecânicas", "Critérios escritos antes de decidir", "Pausa de 3 s antes de responder"]];
-const EXEC = ["exec", "15:00", "17:00", "Execução", ["Executar o planejado", "16:45: Única Coisa de amanhã", "Deixar só esse arquivo aberto"]];
+const EXEC = ["exec", "15:00", "17:00", "Execução", ["Executar o planejado", "16:45: prioridade de amanhã", "Deixar só esse arquivo aberto"]];
 const WORKDAY = [WAKE, MORNING, FOOD, DEEP, TRIAGE, LUNCH, VALLEY, EXEC];
 const train = (kind, steps) => ["train", "17:15", "18:30", `Treino · ${kind}`, steps];
 const evening = (steps) => ["tribe", "18:30", "21:00", "Vida pessoal", steps];
@@ -30,7 +30,7 @@ const WEEK = [
     ["free", "11:00", "12:00", "Tempo livre", ["Voltar com calma", "Convivência"]],
     ["lunch", "12:00", "13:30", "Almoço", ["Refeição em família", "Descanso"]],
     ["rest", "13:30", "15:00", "Descanso", ["Sesta", "Ócio sem culpa"]],
-    ["family", "15:00", "17:00", "Lazer e família", ["Tempo com a família", "16:45: Única Coisa de segunda"]],
+    ["family", "15:00", "17:00", "Lazer e família", ["Tempo com a família", "16:45: prioridade de segunda"]],
     train("Descanso ativo", ["Caminhada longa na natureza", "Alongamento"]),
     ["church2", "19:00", "21:00", "Culto", ["Culto noturno", "Comunhão"]],
     SUNSET,
@@ -91,7 +91,7 @@ const BASE_WAKE = 6 * 60 + 30;
 export const ANCHORS = [
   { id: "anchor1", title: "Início fixo", steps: "Acordar no horário · água · sol" },
   { id: "anchor2", title: "Foco primeiro", steps: "90–120 min de alta carga antes de abrir mensagens" },
-  { id: "anchor3", title: "Desligar", steps: "Definir a Única Coisa de amanhã · fechar o computador · treinar" },
+  { id: "anchor3", title: "Desligar", steps: "Definir a prioridade de amanhã · fechar o computador · treinar" },
 ];
 
 export const PRINCIPLES = [
@@ -124,11 +124,6 @@ export const PRINCIPLES = [
     book: "A Sociedade do Cansaço", author: "Byung-Chul Han",
     idea: "Multitarefa é regressão, não evolução. Criar exige poder dizer não e suportar o tédio.",
     practice: "Caixas fixas para mensagens, caminhadas sem fone e janelas inegociáveis de ócio.",
-  },
-  {
-    book: "A Única Coisa", author: "Gary Keller e Jay Papasan",
-    idea: "Resultados extraordinários vêm de ir fundo numa coisa só, não de fazer várias pela metade.",
-    practice: "No fim do expediente: qual é a única coisa de amanhã que torna o resto mais fácil ou desnecessário? Ela abre o Deep Work.",
   },
   {
     book: "Hábitos Atômicos", author: "James Clear",

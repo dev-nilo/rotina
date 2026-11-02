@@ -140,7 +140,7 @@ section { margin-bottom: 16px; }
 .seg button { padding: 8px 14px; border-radius: 999px; font-size: 14px; font-weight: 800; opacity: 0.6; }
 .seg button[aria-checked="true"] { background: var(--ink); color: #fff; opacity: 1; }
 
-/* Única Coisa */
+/* Prioridade do dia */
 .focus {
   display: flex; align-items: baseline; gap: 12px;
   background: var(--row); color: var(--on-row); border-radius: 24px; padding: 16px 20px;
