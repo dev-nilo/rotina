@@ -5,10 +5,6 @@ const KEY = "rotina.v2";
 
 export const DEFAULT_SETTINGS = {
   wake: 6 * 60 + 30,
-  deepCycles: 2,
-  shutdown: 17 * 60,
-  workout: 75,
-  lunch: 90,
   timerPreset: "90/15",
 };
 

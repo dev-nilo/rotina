@@ -6,8 +6,9 @@ e *A Sociedade do Cansaço*.
 
 - **Hoje**: escolha entre dia estruturado (agenda completa) ou caótico (3 Âncoras).
 - **cat-modoro**: timer de foco do Deep Work (90/15 ou 25/5).
-- **Ajustes**: horário de acordar, ciclos de Deep Work, almoço, desligamento, treino e
-  avisos e exportação da rotina para o Calendário (.ics).
+- **Semana padrão**: uma agenda por dia da semana, em `WEEK` (`js/routine.js`).
+- **Ajustes**: horário de acordar (desloca a semana inteira), cat-modoro, avisos e
+  exportação da rotina para o Calendário (.ics).
 
 Os dados ficam no aparelho (localStorage). Com os avisos ligados, os horários dos próximos
 7 dias também vão para o Worker de push (veja abaixo).

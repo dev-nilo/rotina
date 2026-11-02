@@ -1,6 +1,6 @@
 import {
   ANCHORS, PRINCIPLES, AWAKE_SPAN,
-  buildSchedule, execMinutes, momentAt, clock, parseClock, duration,
+  buildSchedule, momentAt, clock, parseClock, duration,
 } from "./routine.js";
 import {
   state, save, now, day, dayKey, peekDay, toggleDone, isDone, getApiKey, setApiKey,
@@ -351,22 +351,13 @@ function dayScreen() {
 
 function settingsScreen() {
   const s = state.settings;
-  // Sempre de um dia útil: o fim de semana não tem bloco de execução.
-  const execLeft = execMinutes(buildSchedule(s, 1));
   const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
 
   return `${header("Ajustes", { back: "home", strip: false, gear: false })}
     <section class="form">
       <label class="field"><span>Acordar às</span><input type="time" data-setting="wake" value="${clock(0, s.wake)}"></label>
       <div class="field"><span>Dormir às</span><span class="muted num">${clock(AWAKE_SPAN, s.wake)}</span></div>
-      <p class="hint">A rotina inteira se desloca junto. Mantenha esse horário todos os dias, com no máximo 60 min de diferença no fim de semana.</p>
-    </section>
-    <section class="form">
-      <div class="field"><span>Deep Work</span>${segmented("deepCycles", [[1, "1 ciclo"], [2, "2 ciclos"]])}</div>
-      <div class="field"><span>Almoço</span>${segmented("lunch", [[60, "60"], [75, "75"], [90, "90"]])}</div>
-      <label class="field"><span>Desligamento</span><input type="time" data-setting="shutdown" value="${clock(0, s.shutdown)}"></label>
-      <div class="field"><span>Treino</span>${segmented("workout", [[45, "45"], [60, "60"], [75, "75"], [90, "90"]])}</div>
-      ${execLeft < 30 ? `<p class="hint warn">Com esse desligamento, ${execLeft ? `sobram só ${execLeft} min` : "não sobra tempo"} de execução à tarde. Considere desligar mais tarde.</p>` : ""}
+      <p class="hint">Nos dias úteis. Na quarta, depois do Futsal, e no fim de semana, 45 min depois. A semana inteira se desloca junto.</p>
     </section>
     <section class="form">
       <div class="field"><span>cat-modoro</span>${segmented("timerPreset", [["90/15", "90/15"], ["25/5", "25/5"]])}</div>
@@ -700,7 +691,7 @@ app.addEventListener("click", (e) => {
       return;
     case "export-ics":
       // A rotina base, sem os ajustes pontuais do assistente.
-      openICS(routineICS((weekday) => buildSchedule(state.settings, weekday), state.settings.wake), "rotina.ics");
+      openICS(routineICS(buildSchedule, state.settings.wake), "rotina.ics");
       return;
     case "task-toggle": {
       const t = state.tasks.find((t) => t.id === id);

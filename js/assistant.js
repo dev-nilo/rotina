@@ -9,7 +9,7 @@ import { state, dayKey, now, peekDay } from "./store.js";
 const SDK_URL = "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.132.1/+esm";
 const MODEL = "claude-opus-5-5";
 
-const SETTINGS = ["wake", "shutdown", "deepCycles", "lunch", "workout", "timerPreset"];
+const SETTINGS = ["wake", "timerPreset"];
 
 // Formato fixo da resposta. Campos que não se aplicam vêm vazios.
 const SCHEMA = {
@@ -48,7 +48,7 @@ Operações:
 - add_event: compromisso pontual num dia (date YYYY-MM-DD, start e end HH:MM, title, steps). Se a pessoa não disser a duração, estime (futebol ~90 min, consulta ~60 min). Os blocos que o evento cobre são encurtados automaticamente pelo app; não os remova por isso.
 - replace_block: troca título e passos de um bloco num dia, mantendo o horário (date, block_id, title, steps).
 - remove_block: tira um bloco de um dia (date, block_id). Prefira replace_block.
-- change_setting: mudança permanente ("a partir de agora", "sempre", "todo dia"). setting e value: wake e shutdown em HH:MM; deepCycles "1" ou "2"; lunch "60", "75" ou "90"; workout "45", "60", "75" ou "90"; timerPreset "90/15" ou "25/5". Nada além disso é permanente.
+- change_setting: mudança permanente ("a partir de agora", "sempre", "todo dia"). setting e value: wake em HH:MM (horário de acordar nos dias úteis; a semana inteira se desloca junto); timerPreset "90/15" ou "25/5". Nada além disso é permanente.
 
 Entenda o contexto:
 - Se o evento cumpre a função de um bloco (esporte ou exercício → treino; refeição → almoço ou café da manhã), use replace_block nesse bloco no mesmo dia, colocando algo útil no lugar conforme o horário: recuperação e alongamento, tempo livre, ou trabalho leve.
@@ -68,7 +68,7 @@ async function loadSDK() {
 
 /** Agenda de um dia já com os ajustes guardados (e os pendentes, para a prévia). */
 export function scheduleFor(key, settings = state.settings, extraOps = []) {
-  const base = buildSchedule(settings, weekdayOf(key));
+  const base = buildSchedule(weekdayOf(key));
   return applyOps(base, [...(peekDay(key)?.ops ?? []), ...extraOps], settings.wake);
 }
 
@@ -86,7 +86,7 @@ function context() {
     }
   }
   return `Agora: ${now().toTimeString().slice(0, 5)}.
-Ajustes permanentes: acordar ${clock(0, s.wake)}, desligamento ${clock(0, s.shutdown)}, Deep Work ${s.deepCycles} ciclo(s), almoço ${s.lunch} min, treino ${s.workout} min, cat-modoro ${s.timerPreset}.
+Ajustes permanentes: acordar ${clock(0, s.wake)} nos dias úteis, cat-modoro ${s.timerPreset}.
 Agenda:${lines.join("\n")}`;
 }
 
@@ -141,10 +141,6 @@ const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const SETTING_VALUES = {
   wake: (v) => HHMM.test(v),
-  shutdown: (v) => HHMM.test(v),
-  deepCycles: (v) => ["1", "2"].includes(v),
-  lunch: (v) => ["60", "75", "90"].includes(v),
-  workout: (v) => ["45", "60", "75", "90"].includes(v),
   timerPreset: (v) => ["90/15", "25/5"].includes(v),
 };
 
@@ -172,9 +168,9 @@ export function splitOps(ops) {
   const byDay = {};
   for (const op of ops) {
     if (op.action === "change_setting") {
-      settings[op.setting] = op.setting === "wake" || op.setting === "shutdown"
+      settings[op.setting] = op.setting === "wake"
         ? Number(op.value.slice(0, 2)) * 60 + Number(op.value.slice(3))
-        : /^\d+$/.test(op.value) ? Number(op.value) : op.value;
+        : op.value;
     } else {
       (byDay[op.date] ??= []).push(op);
     }
@@ -183,6 +179,5 @@ export function splitOps(ops) {
 }
 
 export const SETTING_LABELS = {
-  wake: "Acordar", shutdown: "Desligamento", deepCycles: "Ciclos de Deep Work",
-  lunch: "Almoço (min)", workout: "Treino (min)", timerPreset: "cat-modoro",
+  wake: "Acordar", timerPreset: "cat-modoro",
 };
