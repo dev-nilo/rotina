@@ -9,7 +9,7 @@ import { state, dayKey, now, peekDay } from "./store.js";
 const SDK_URL = "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.132.1/+esm";
 const MODEL = "claude-opus-5-5";
 
-const SETTINGS = ["wake", "timerPreset"];
+const SETTINGS = ["wake"];
 
 // Formato fixo da resposta. Campos que não se aplicam vêm vazios.
 const SCHEMA = {
@@ -48,7 +48,7 @@ Operações:
 - add_event: compromisso pontual num dia (date YYYY-MM-DD, start e end HH:MM, title, steps). Se a pessoa não disser a duração, estime (futebol ~90 min, consulta ~60 min). Os blocos que o evento cobre são encurtados automaticamente pelo app; não os remova por isso.
 - replace_block: troca título e passos de um bloco num dia, mantendo o horário (date, block_id, title, steps).
 - remove_block: tira um bloco de um dia (date, block_id). Prefira replace_block.
-- change_setting: mudança permanente ("a partir de agora", "sempre", "todo dia"). setting e value: wake em HH:MM (horário de acordar nos dias úteis; a semana inteira se desloca junto); timerPreset "90/15" ou "25/5". Nada além disso é permanente.
+- change_setting: mudança permanente ("a partir de agora", "sempre", "todo dia"). setting "wake" e value em HH:MM (horário de acordar nos dias úteis; a semana inteira se desloca junto). Nada além disso é permanente.
 
 Entenda o contexto:
 - Se o evento cumpre a função de um bloco (esporte ou exercício → treino; refeição → almoço ou café da manhã), use replace_block nesse bloco no mesmo dia, colocando algo útil no lugar conforme o horário: recuperação e alongamento, tempo livre, ou trabalho leve.
@@ -57,7 +57,7 @@ Entenda o contexto:
 
 Formato:
 - reply: 1 ou 2 frases curtas em português, dizendo o que vai mudar.
-- steps: 1 a 3 passos curtos (até 5 palavras), no infinitivo.
+- steps: até 3 ações concretas e curtas (até 5 palavras), que dê para cumprir sem pensar. Lazer, família, culto e jogos ficam sem passos ([]).
 - Campos que não se aplicam à operação: string vazia, steps [] e setting "none".`;
 
 let sdk;
@@ -93,7 +93,7 @@ function context() {
     }
   }
   return `Agora: ${now().toTimeString().slice(0, 5)}.
-Ajustes permanentes: acordar ${clock(0, s.wake)} nos dias úteis, cat-modoro ${s.timerPreset}.
+Ajustes permanentes: acordar ${clock(0, s.wake)} nos dias úteis.
 Agenda:${lines.join("\n")}`;
 }
 
@@ -148,7 +148,6 @@ const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const SETTING_VALUES = {
   wake: (v) => HHMM.test(v),
-  timerPreset: (v) => ["90/15", "25/5"].includes(v),
 };
 
 function valid(op) {
@@ -175,9 +174,8 @@ export function splitOps(ops) {
   const byDay = {};
   for (const op of ops) {
     if (op.action === "change_setting") {
-      settings[op.setting] = op.setting === "wake"
-        ? Number(op.value.slice(0, 2)) * 60 + Number(op.value.slice(3))
-        : op.value;
+      // O único ajuste permanente é o horário de acordar (HH:MM).
+      settings[op.setting] = Number(op.value.slice(0, 2)) * 60 + Number(op.value.slice(3));
     } else {
       (byDay[op.date] ??= []).push(op);
     }
@@ -186,5 +184,5 @@ export function splitOps(ops) {
 }
 
 export const SETTING_LABELS = {
-  wake: "Acordar", timerPreset: "cat-modoro",
+  wake: "Acordar",
 };

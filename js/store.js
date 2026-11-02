@@ -5,15 +5,13 @@ const KEY = "rotina.v2";
 
 export const DEFAULT_SETTINGS = {
   wake: 6 * 60 + 30,
-  timerPreset: "90/15",
 };
 
 function fresh() {
   return {
     settings: { ...DEFAULT_SETTINGS },
-    // dia lógico (yyyy-mm-dd) → { mode, done: [ids], focus, cycles }
+    // dia lógico (yyyy-mm-dd) → { mode, done: [ids de blocos], focus, cycles, ops, opened?, holiday? }
     days: {},
-    tasks: [], // { id, title, heavy, done }
     timer: null, // ver catmodoro.js
     push: false, // avisos ligados neste aparelho (ver push.js)
   };

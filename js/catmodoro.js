@@ -4,17 +4,15 @@
 
 import { state, save, now, day } from "./store.js";
 
-export const PRESETS = {
-  "90/15": { focus: 90, rest: 15 },
-  "25/5": { focus: 25, rest: 5 },
-};
+/** Um ciclo ultradiano: 90 min de foco e 15 de pausa, em minutos. */
+export const FOCUS = 90;
+export const REST = 15;
 
-/** state.timer = null | { phase: "focus" | "rest", startedAt, endsAt, preset } */
+/** state.timer = null | { phase: "focus" | "rest", startedAt, endsAt } */
 
 export function start() {
-  const p = PRESETS[state.settings.timerPreset];
   const t = now().getTime();
-  state.timer = { phase: "focus", startedAt: t, endsAt: t + p.focus * 60000, preset: state.settings.timerPreset };
+  state.timer = { phase: "focus", startedAt: t, endsAt: t + FOCUS * 60000 };
   save();
 }
 
@@ -42,10 +40,9 @@ export function tick() {
 
   if (timer.phase === "focus" && t >= timer.endsAt) {
     day().cycles += 1;
-    const rest = PRESETS[timer.preset].rest;
     timer.phase = "rest";
     timer.startedAt = timer.endsAt;
-    timer.endsAt = timer.endsAt + rest * 60000;
+    timer.endsAt = timer.endsAt + REST * 60000;
     changed = true;
   }
   if (timer.phase === "rest" && t >= timer.endsAt) {

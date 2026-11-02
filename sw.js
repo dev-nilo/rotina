@@ -1,5 +1,5 @@
 // Cache offline: tenta a rede primeiro (para pegar atualizações) e cai no cache sem internet.
-const CACHE = "rotina-v13";
+const CACHE = "rotina-v14";
 const FILES = [
   "./",
   "index.html",
@@ -9,7 +9,6 @@ const FILES = [
   "js/routine.js",
   "js/store.js",
   "js/catmodoro.js",
-  "js/ics.js",
   "js/assistant.js",
   "js/push.js",
   "icons/icon-180.png",

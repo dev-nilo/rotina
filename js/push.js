@@ -4,7 +4,8 @@
 
 import { state, save, now, dayKey, peekDay } from "./store.js";
 import { scheduleFor } from "./assistant.js";
-import { PRESETS } from "./catmodoro.js";
+import { REST } from "./catmodoro.js";
+import { PLAN_AT, parseClock } from "./routine.js";
 
 const WORKER = "https://rotina-push.dev-neelo.workers.dev";
 const VAPID_PUBLIC_KEY = "BCQz3KV1zM_AKlUt4yeJfvYTLyz_B9fF00TZa4ptTYAydU9I0RIJ-irHrdWqajkevXnUqokL9vGIKY8THx331m0";
@@ -14,9 +15,10 @@ const SENT = "rotina.push.sent";
 export const supported = () => "PushManager" in window && "serviceWorker" in navigator && "Notification" in window;
 
 /**
- * Avisos de hoje e dos próximos dias: início de cada bloco (menos nos dias caóticos)
- * e o fim de cada fase do cat-modoro. Inclui os já passados de hoje para a lista
- * só mudar quando a rotina muda, e não a cada minuto.
+ * Avisos de hoje e dos próximos dias (menos nos dias caóticos): início dos blocos que
+ * marcam uma troca de modo (`notify`), a prioridade de amanhã às 16:45 e o fim de cada
+ * fase do cat-modoro. Inclui os já passados de hoje para a lista só mudar quando a
+ * rotina muda, e não a cada minuto.
  */
 export function upcoming() {
   const items = [];
@@ -24,10 +26,18 @@ export function upcoming() {
   for (let i = 0; i < DAYS; i++) {
     const key = dayKey(new Date(t0 + i * 86400000));
     if (peekDay(key)?.mode === "chaotic") continue;
-    for (const b of scheduleFor(key)) {
+    const sched = scheduleFor(key);
+    for (const b of sched.filter((b) => b.notify || b.event)) {
       const at = new Date(`${key}T00:00:00`);
       at.setMinutes(state.settings.wake + b.start);
       items.push({ at: at.getTime(), title: b.title, body: b.steps.join(" · "), tag: `${key}:${b.id}` });
+    }
+    // Mesmos blocos em que o app mostra o campo da prioridade de amanhã.
+    const weekday = new Date(`${key}T12:00:00`).getDay();
+    if (sched.some((b) => b.id === "exec" || (b.id === "family" && weekday === 0))) {
+      const at = new Date(`${key}T00:00:00`);
+      at.setMinutes(parseClock(PLAN_AT));
+      items.push({ at: at.getTime(), title: "Prioridade de amanhã", body: "Defina agora e deixe só esse arquivo aberto.", tag: `${key}:plan` });
     }
   }
 
@@ -36,7 +46,7 @@ export function upcoming() {
     if (timer.phase === "focus") {
       items.push({ at: timer.endsAt, title: "cat-modoro: fim do foco", body: "Hora da pausa. Levante e caminhe.", tag: "timer" });
     }
-    const restEnd = timer.phase === "focus" ? timer.endsAt + PRESETS[timer.preset].rest * 60000 : timer.endsAt;
+    const restEnd = timer.phase === "focus" ? timer.endsAt + REST * 60000 : timer.endsAt;
     items.push({ at: restEnd, title: "cat-modoro: fim da pausa", body: "Pausa encerrada. De volta ao foco.", tag: "timer" });
   }
   return items;

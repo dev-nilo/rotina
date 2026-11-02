@@ -4,12 +4,13 @@ Web app (PWA) que mostra o que fazer agora, segundo uma rotina produtiva e suste
 baseada em cronobiologia, *O Milagre da Manhã*, *O Poder do Hábito*, *Behave*, *Sapiens*
 e *A Sociedade do Cansaço*.
 
-- **Hoje**: escolha entre dia estruturado (agenda completa) ou caótico (3 Âncoras).
-- **cat-modoro**: timer de foco do Deep Work (90/15 ou 25/5).
+- **Hoje**: o bloco de agora, com um check para o bloco inteiro e os passos só para ler.
+  A prioridade do dia aparece no Deep Work e é definida na véspera, às 16:45.
+  Num dia caótico, um link troca a agenda pelas 3 Âncoras.
+- **cat-modoro**: timer de foco (90/15) no Deep Work e nos Estudos.
 - **Semana padrão**: uma agenda por dia da semana, em `WEEK` (`js/routine.js`).
   Feriados nacionais em dia útil seguem a rotina de sábado; dá para marcar ou desmarcar à mão.
-- **Ajustes**: horário de acordar (desloca a semana inteira), cat-modoro, avisos e
-  exportação da rotina para o Calendário (.ics).
+- **Ajustes**: horário de acordar (desloca a semana inteira), avisos e a chave do assistente.
 
 Os dados ficam no aparelho (localStorage). Com os avisos ligados, os horários dos próximos
 7 dias também vão para o Worker de push (veja abaixo).
