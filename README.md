@@ -10,6 +10,9 @@ e *A Sociedade do Cansaço*.
 - **cat-modoro**: timer de foco (90/15) no Deep Work e nos Estudos.
 - **Semana padrão**: uma agenda por dia da semana, em `WEEK` (`js/routine.js`).
   Feriados nacionais em dia útil seguem a rotina de sábado; dá para marcar ou desmarcar à mão.
+- **Capitão América** (`js/shape.js`): complemento da rotina, sem mexer na semana. Dentro dos blocos que já existem
+  aparecem os exercícios extras dos treinos de força (seg, qua, sex) com registro de carga e o marcador "Topo"
+  (dupla progressão), as quantidades das refeições, e no Início o peso diário com média de 7 dias (cintura às segundas).
 - **Ajustes**: horário de acordar (desloca a semana inteira), avisos e a chave do assistente.
 
 Os dados ficam no aparelho (localStorage). Com os avisos ligados, os horários dos próximos

@@ -8,6 +8,7 @@ import {
 import * as cat from "./catmodoro.js";
 import { ask, scheduleFor, isHoliday, splitOps, SETTING_LABELS } from "./assistant.js";
 import * as push from "./push.js";
+import * as shape from "./shape.js";
 
 const app = document.getElementById("app");
 
@@ -118,6 +119,60 @@ function focusField(key, label) {
 /** Os passos de um bloco, só para ler: quem marca é o bloco inteiro. */
 const stepsList = (steps) => steps.length ? `<ul class="steps">${steps.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
 
+// MARK: - Capitão América (complemento dos blocos, ver shape.js)
+
+const num = (v) => (v == null ? "" : String(v).replace(".", ","));
+const parseNum = (v) => {
+  const n = parseFloat(String(v).replace(",", "."));
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
+function weighBox(key, withWaist) {
+  const trend = shape.weightTrend(key);
+  const field = (kind, label, value) =>
+    `<label class="cap-field"><span>${label}</span><input type="text" inputmode="decimal" data-cap-measure="${kind}" data-key="${key}" value="${num(value)}" placeholder="—"></label>`;
+  return `<div class="cap-weigh">
+      ${field("weight", "Peso (kg)", shape.weight(key))}
+      ${withWaist ? field("waist", "Cintura (cm)", shape.waist(key)) : ""}
+      ${trend ? `<p class="cap-hint">Média 7 dias: <strong>${num(trend.avg.toFixed(1))} kg</strong>${trend.delta != null ? ` (${trend.delta >= 0 ? "+" : ""}${num(trend.delta.toFixed(1))})` : ""}. ${esc(trend.advice)}</p>` : ""}
+    </div>`;
+}
+
+function trainBox(list, key) {
+  return `<div class="cap-train">${list.map((ex) => {
+    const today = shape.loadOn(ex.id, key);
+    const prev = shape.previousLoad(ex.id, key);
+    const hint = !prev ? "" : prev.top ? `Subir de ${num(prev.kg)} kg` : `Última: ${num(prev.kg)} kg`;
+    return `<div class="cap-ex ${prev?.top ? "go-up" : ""}">
+        <div class="cap-ex-name"><strong>${esc(ex.name)}</strong><span>${ex.sets}×${esc(ex.reps)}${ex.base ? " · do bloco" : ""}${hint ? ` · ${hint}` : ""}</span></div>
+        <input type="text" inputmode="decimal" aria-label="Carga de ${esc(ex.name)} em kg" data-cap-load="${ex.id}" data-key="${key}" value="${num(today?.kg)}" placeholder="kg">
+        <button class="cap-top ${today?.top ? "on" : ""}" data-action="cap-top" data-id="${ex.id}" data-key="${key}" aria-pressed="${!!today?.top}" title="Fechei o topo das reps em todas as séries">Topo</button>
+      </div>`;
+  }).join("")}
+    <p class="cap-hint">Topo = fechou o máximo de reps em todas as séries. Na próxima, sobe a carga.</p>
+  </div>`;
+}
+
+/** Dia da semana cuja agenda vale em `key`: feriado em dia útil segue o sábado (como scheduleFor). */
+function routineWeekday(key) {
+  const wd = weekdayOf(key);
+  return isHoliday(key) && wd >= 1 && wd <= 5 ? 6 : wd;
+}
+
+/** O que o plano Capitão América soma a este bloco. Vazio se nada. */
+function extrasPanel(b, key) {
+  const x = shape.extrasFor(b, routineWeekday(key));
+  if (!x) return "";
+  return `<div class="cap">
+      <span class="eyebrow">Capitão América</span>
+      ${x.weigh ? weighBox(key, x.weigh.waist) : ""}
+      ${x.food ? `<ul class="cap-food">${x.food.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` : ""}
+      ${x.train ? trainBox(x.train, key) : ""}
+    </div>`;
+}
+
+const hasExtras = (b, key) => !!shape.extrasFor(b, routineWeekday(key));
+
 /** Blocos com o cat-modoro: os de foco longo. */
 const FOCUS_BLOCKS = ["deep", "study"];
 
@@ -188,6 +243,7 @@ function nowCard(sched) {
         ${mo.kind === "block" && b.steps.length ? checkButton("toggle", b.id, done, b.title) : ""}
       </div>
       ${stepsList(b.steps)}
+      ${extrasPanel(b, dayKey())}
       ${priorityField(b, mo)}
       ${showCat ? catInline() : ""}
       ${mo.kind === "block" ? `<div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>` : ""}
@@ -242,14 +298,14 @@ function dayList(sched) {
     const done = isDone(b.id, key);
     const isNow = mo?.kind === "block" && mo.block.id === b.id;
     const past = mo ? mo.m >= b.end && !isNow : key < today;
-    const open = b.steps.length > 0 && (expanded === b.id || (isNow && expanded === null));
+    const open = (b.steps.length > 0 || hasExtras(b, key)) && (expanded === b.id || (isNow && expanded === null));
     return `<div class="row ${isNow ? "is-now" : ""} ${done ? "is-done" : ""} ${past && !done ? "is-past" : ""}">
         <button class="row-main" data-action="expand" data-id="${b.id}" aria-expanded="${open}">
           <span class="time">${clock(b.start, wake)}</span>
           <span class="row-title">${esc(b.title)}${b.changed ? `<span class="tag">ajustado</span>` : ""}</span>
         </button>
         ${b.steps.length ? checkButton("toggle", b.id, done, b.title) : ""}
-        ${open ? `<div class="row-steps"><span>${b.steps.map(esc).join(" · ")}</span></div>` : ""}
+        ${open ? `<div class="row-steps">${b.steps.length ? `<span>${b.steps.map(esc).join(" · ")}</span>` : ""}${extrasPanel(b, key)}</div>` : ""}
       </div>`;
   });
 
@@ -531,6 +587,11 @@ app.addEventListener("click", (e) => {
     case "expand":
       expanded = el.getAttribute("aria-expanded") === "true" ? "none" : id;
       break;
+    case "cap-top": {
+      const cur = shape.loadOn(id, el.dataset.key);
+      shape.setLoad(id, el.dataset.key, { top: !cur?.top });
+      break;
+    }
     case "timer-start":
       cat.start();
       break;
@@ -592,6 +653,17 @@ app.addEventListener("input", (e) => {
 });
 
 app.addEventListener("change", (e) => {
+  const { capLoad, capMeasure, key: capKey } = e.target.dataset;
+  if (capLoad) {
+    shape.setLoad(capLoad, capKey, { kg: parseNum(e.target.value) });
+    render();
+    return;
+  }
+  if (capMeasure) {
+    shape.setMeasure(capMeasure, capKey, parseNum(e.target.value));
+    render();
+    return;
+  }
   if ("apikey" in e.target.dataset) {
     setApiKey(e.target.value.trim());
     render();
@@ -614,7 +686,7 @@ app.addEventListener("submit", (e) => {
 
 // Enter no campo da prioridade fecha o teclado.
 app.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && e.target.dataset.input === "focus") {
+  if (e.key === "Enter" && (e.target.dataset.input === "focus" || e.target.dataset.capLoad || e.target.dataset.capMeasure)) {
     e.preventDefault();
     e.target.blur();
   }

@@ -355,3 +355,30 @@ section { margin-bottom: 16px; }
 .check.pop { animation: pop 0.18s ease-out; }
 @keyframes pop { 50% { transform: scale(1.22); } }
 @media (prefers-reduced-motion: reduce) { .check.pop { animation: none; } }
+
+/* Capitão América: complemento dentro do bloco (cartão Agora e linha do dia) */
+.cap { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid currentColor; border-top-color: rgba(127, 127, 127, 0.3); color: inherit; }
+.row-steps .cap { margin-top: 4px; color: var(--on-row); }
+.row.is-now .row-steps .cap { color: #fff; }
+.cap .eyebrow { color: inherit; opacity: 0.7; }
+.now .cap .eyebrow { color: var(--lime); opacity: 1; }
+.cap-food { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cap-food li { padding: 10px 14px; border-radius: 16px; background: rgba(127, 127, 127, 0.14); font-size: 15px; font-weight: 600; }
+.cap-train { display: flex; flex-direction: column; gap: 6px; }
+.cap-ex { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 14px; border-radius: 16px; background: rgba(127, 127, 127, 0.14); }
+.cap-ex.go-up { box-shadow: inset 0 0 0 2px var(--lime); }
+.cap-ex-name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cap-ex-name strong { font-size: 15px; font-weight: 800; }
+.cap-ex-name span { font-size: 13px; opacity: 0.75; }
+.cap input {
+  width: 64px; flex: none; padding: 8px 10px; border-radius: 12px; border: 0; outline: 0;
+  background: rgba(127, 127, 127, 0.2); font-size: 16px; font-weight: 800; text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.cap input::placeholder { color: inherit; opacity: 0.45; }
+.cap-top { flex: none; padding: 8px 10px; border-radius: 999px; font-size: 13px; font-weight: 800; box-shadow: inset 0 0 0 2px rgba(127, 127, 127, 0.4); }
+.cap-top.on { background: var(--lime); color: var(--forest); box-shadow: none; }
+.cap-weigh { display: flex; flex-direction: column; gap: 6px; }
+.cap-field { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 14px; border-radius: 16px; background: rgba(127, 127, 127, 0.14); font-size: 15px; font-weight: 700; }
+.cap-field input { width: 84px; }
+.cap-hint { font-size: 13px; opacity: 0.75; }

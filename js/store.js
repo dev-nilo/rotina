@@ -14,6 +14,8 @@ function fresh() {
     days: {},
     timer: null, // ver catmodoro.js
     push: false, // avisos ligados neste aparelho (ver push.js)
+    // Capitão América (ver shape.js): peso e cintura por dia, cargas por exercício.
+    shape: { weights: {}, waist: {}, loads: {} },
   };
 }
 
