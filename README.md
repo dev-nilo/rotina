@@ -13,6 +13,9 @@ e *A Sociedade do Cansaço*.
 - **Capitão América** (`js/shape.js`): complemento da rotina, sem mexer na semana. Dentro dos blocos que já existem
   aparecem os exercícios extras dos treinos de força (seg, qua, sex) com registro de carga e o marcador "Topo"
   (dupla progressão), as quantidades das refeições, e no Início o peso diário com média de 7 dias (cintura às segundas).
+- **Climas de cor** (`js/climate.js`): a tela assume o clima do bloco atual (Despertar, Foco, Movimento,
+  Pessoal, Noite). Cada clima usa tons vizinhos na roda de cores, e o dia percorre o lado quente da roda;
+  a Noite não tem azul nem branco. Na lista do dia, cada bloco tem uma marca com a cor do seu clima.
 - **Ajustes**: horário de acordar (desloca a semana inteira), avisos e a chave do assistente.
 
 Os dados ficam no aparelho (localStorage). Com os avisos ligados, os horários dos próximos

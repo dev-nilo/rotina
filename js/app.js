@@ -9,6 +9,7 @@ import * as cat from "./catmodoro.js";
 import { ask, scheduleFor, isHoliday, splitOps, SETTING_LABELS } from "./assistant.js";
 import * as push from "./push.js";
 import * as shape from "./shape.js";
+import { climateOf, climateAt, applyClimate } from "./climate.js";
 
 const app = document.getElementById("app");
 
@@ -300,6 +301,7 @@ function dayList(sched) {
     const past = mo ? mo.m >= b.end && !isNow : key < today;
     const open = (b.steps.length > 0 || hasExtras(b, key)) && (expanded === b.id || (isNow && expanded === null));
     return `<div class="row ${isNow ? "is-now" : ""} ${done ? "is-done" : ""} ${past && !done ? "is-past" : ""}">
+        <span class="mark" style="--mark: var(--sig-${climateOf(b.id)})" aria-hidden="true"></span>
         <button class="row-main" data-action="expand" data-id="${b.id}" aria-expanded="${open}">
           <span class="time">${clock(b.start, wake)}</span>
           <span class="row-title">${esc(b.title)}${b.changed ? `<span class="tag">ajustado</span>` : ""}</span>
@@ -531,6 +533,8 @@ function render() {
     today.opened = true;
     save();
   }
+  // A tela inteira assume o clima do bloco de agora (em qualquer tela e em qualquer dia aberto).
+  applyClimate(climateAt(momentAt(schedule(), now(), state.settings.wake)));
   const screens = { home: homeScreen, day: dayScreen, settings: settingsScreen, why: whyScreen };
   app.innerHTML = `<main class="screen">${screens[screen]()}</main>${assistantSheet()}`;
   popped = null;
