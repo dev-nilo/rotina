@@ -13,78 +13,130 @@ const DEEP = ["deep", "08:00", "11:30", "Deep Work", ["Celular em outro cômodo"
 const TRIAGE = ["triage", "11:30", "12:00", "Mensagens", ["Responder tudo de uma vez", "Menos de 2 min: resolver já", "Fechar todas as abas"], AVISA];
 const LUNCH = ["lunch", "12:00", "13:30", "Almoço", ["Proteína e vegetais", "15 min de sol, sem fone"]];
 const VALLEY = ["valley", "13:30", "15:00", "Operacional", ["Reuniões e tarefas mecânicas", "Critérios escritos antes de decidir", "Pausa de 3 s antes de responder"]];
-const EXEC = ["exec", "15:00", "17:00", "Execução", ["Executar o planejado", "16:45: prioridade de amanhã", "Deixar só esse arquivo aberto"]];
-const WORKDAY = [WAKE, FOOD, DEEP, TRIAGE, LUNCH, VALLEY, EXEC];
+const EXEC = ["exec", "15:00", "17:00", "Execução", ["Executar o planejado", "16:15: prioridade de amanhã", "Deixar só esse arquivo aberto"]];
+/** Treino do fim de semana, no fim da tarde. */
 const train = (kind, steps) => ["train", "17:15", "18:30", `Treino · ${kind}`, steps, AVISA];
-const EVENING = ["tribe", "18:30", "21:00", "Vida pessoal", []];
 const SUNSET = ["sunset", "21:00", "22:30", "Desacelerar", ["Luz baixa e indireta", "Sem telas", "Leitura de ficção"], AVISA];
 
-/**
- * A semana padrão. Índice = dia da semana (0 = domingo).
- * O treino gira em volta dos jogos: perna pesada longe do Society e do Futsal (Outlive).
- */
-const WEEK = [
-  [
-    ["wake", "07:15", "08:00", "Início", ["Água e 10 min de sol", "Silêncio e oração", "Café rápido"], AVISA],
-    ["church", "08:00", "11:00", "Culto", [], AVISA],
-    ["free", "11:00", "12:00", "Tempo livre", []],
-    ["lunch", "12:00", "13:30", "Almoço", []],
-    ["rest", "13:30", "15:00", "Descanso", []],
-    ["family", "15:00", "17:00", "Lazer e família", ["16:45: prioridade de segunda"]],
-    train("Descanso ativo", ["Caminhada longa", "Alongamento 10 min"]),
-    ["church2", "19:00", "21:00", "Culto", [], AVISA],
-    SUNSET,
-  ],
-  [
-    ...WORKDAY,
-    train("Força superior", ["Supino com halteres 3×8", "Remada curvada 3×8", "Prancha 3×40 s"]),
-    ["tribe", "18:30", "19:30", "Vida pessoal", ["Lanche pré-jogo"]],
-    ["society", "19:30", "21:00", "Society", [], AVISA],
-    ["sunset", "21:00", "22:30", "Desacelerar", ["Jantar leve", "Luz baixa e indireta", "Sem telas"], AVISA],
-  ],
-  [
-    ...WORKDAY,
-    train("Mobilidade", ["10 min de quadril e tornozelo", "25 min de bike leve"]),
-    ["tribe", "18:30", "21:00", "Vida pessoal", ["Jantar com carboidrato até 19:30"]],
-    ["futsal", "21:00", "23:00", "Futsal", [], AVISA],
-    ["sunset", "23:00", "23:45", "Desacelerar", ["Banho morno", "5 min de respiração lenta", "Dormir"], AVISA],
-  ],
-  [
-    // Depois do Futsal: 45 min a mais de sono, Início curto e NSDR no almoço.
-    ["wake", "07:15", "07:35", "Início", ["Água e 10 min de sol", "Mobilidade 5 min"], AVISA],
-    ["food", "07:35", "08:00", "Café da manhã", FOOD[4]],
-    DEEP, TRIAGE,
-    ["lunch", "12:00", "13:30", "Almoço", [...LUNCH[4], "20 min de NSDR"]],
-    VALLEY, EXEC,
-    train("Posterior e pegada", ["Terra romeno 3×8", "Farmer's walk 4×30 m", "Pallof press 3×10"]),
-    EVENING, SUNSET,
-  ],
-  [
-    ...WORKDAY,
-    train("Zona 2", ["45 min em ritmo de conversa"]),
-    EVENING, SUNSET,
-  ],
-  [
-    ...WORKDAY,
-    train("Força inferior", ["Agachamento livre 3×6", "Afundo búlgaro 3×8", "Desenvolvimento 3×8"]),
-    EVENING, SUNSET,
-  ],
-  [
-    ["wake", "07:15", "07:35", "Início", ["Água e 10 min de sol", "Mobilidade + 60 s num pé só"], AVISA],
-    ["food", "07:35", "08:30", "Café da manhã", ["30 g de proteína"]],
-    ["study", "08:30", "11:30", "Estudos", ["Celular em outro cômodo", "90 min de prática com teste", "90 min de leitura profunda"], AVISA],
-    ["music", "11:30", "12:00", "Música", ["Ouvir seguindo um só instrumento"]],
-    ["lunch", "12:00", "13:30", "Almoço", []],
-    ["family", "13:30", "15:00", "Atividade em família", []],
-    ["hobby", "15:00", "17:00", "Hobbies", []],
-    train("VO2 máx", ["Aquecer 10 min", "4 × 4 min forte, 4 min leve"]),
-    EVENING, SUNSET,
-  ],
+// Dia em casa: treino das 16:30 às 17:30, logo depois da Execução.
+const EXEC_HOME = ["exec", "15:00", "16:30", "Execução", ["Executar o planejado", "16:15: prioridade de amanhã", "Deixar só esse arquivo aberto"]];
+const HOME_DAY = [WAKE, FOOD, DEEP, TRIAGE, LUNCH, VALLEY, EXEC_HOME];
+const trainHome = (kind, steps) => ["train", "16:30", "17:30", `Treino · ${kind}`, steps, AVISA];
+
+// Dia presencial: 15 km de bike na ida e na volta, treino do meio-dia à uma.
+const BIKE_TO = ["bike", "07:20", "08:05", "Bike · ida 15 km", ["Ritmo de conversa", "Garrafa de água cheia"], AVISA];
+const BIKE_BACK = ["bike2", "17:00", "17:45", "Bike · volta 15 km", ["Ritmo leve", "Lanche ao chegar"], AVISA];
+const officeDay = (kind, steps, { lateWake = false } = {}) => [
+  ...(lateWake
+    ? [["wake", "07:00", "07:15", "Início", ["Água e 10 min de sol", "Mobilidade 5 min"], AVISA],
+       ["food", "07:15", "07:35", "Café da manhã", ["30 g de proteína"]],
+       ["bike", "07:35", "08:20", "Bike · ida 15 km", BIKE_TO[4], AVISA],
+       ["deep", "08:20", "11:30", "Deep Work", DEEP[4], AVISA]]
+    : [["wake", "06:30", "06:55", "Início", ["Água e 10 min de sol", "Mobilidade + 60 s num pé só"], AVISA],
+       ["food", "06:55", "07:20", "Café da manhã", ["30 g de proteína"]],
+       BIKE_TO,
+       ["deep", "08:05", "11:30", "Deep Work", DEEP[4], AVISA]]),
+  TRIAGE,
+  ["train", "12:00", "13:00", `Treino · ${kind}`, steps, AVISA],
+  ["lunch", "13:00", "13:45", "Almoço", ["Marmita: proteína e carboidrato"]],
+  ["valley", "13:45", "15:00", "Operacional", VALLEY[4]],
+  EXEC,
+  BIKE_BACK,
 ];
+
+// O treino de cada dia da semana é o mesmo nas duas semanas; muda só o horário e a bike.
+// A perna fica sempre na quarta: longe do Futsal de terça e da corrida de sábado.
+const TRAIN = {
+  1: ["Superior A", ["Supino inclinado 3×8–10", "Remada curvada 3×8–12", "Elevação lateral 3×12–20"]],
+  2: ["Leve · ombro e braço", ["Elevação lateral 3×15–20", "Rosca + tríceps 2×12", "Prancha 3×40 s"]],
+  3: ["Perna", ["Agachamento livre 3×6–8", "Terra romeno 3×8", "Afundo búlgaro 3×8"]],
+  4: ["Superior B", ["Barra fixa 3×6–10", "Supino reto 3×8–10", "Desenvolvimento 3×8–10"]],
+  5: ["Ombro e braço", ["Desenvolvimento 3×8–12", "Elevação lateral 4×12–20", "Rosca + tríceps 3×10–12"]],
+};
+
+const ENGLISH = ["english", "19:00", "20:00", "English Club", [], AVISA];
+const AFTER_ENGLISH = ["free", "20:00", "21:00", "Vida pessoal", []];
+/** A noite de cada dia útil: English Club na seg, ter e qui; Futsal na terça às 21h. */
+const evening = (weekday, from) => ({
+  1: [["tribe", from, "19:00", "Vida pessoal", []], ENGLISH, AFTER_ENGLISH, SUNSET],
+  2: [["tribe", from, "19:00", "Vida pessoal", ["Jantar com carboidrato antes do English"]], ENGLISH,
+      ["free", "20:00", "21:00", "Pré-jogo", []],
+      ["futsal", "21:00", "23:00", "Futsal", [], AVISA],
+      ["sunset", "23:00", "23:45", "Desacelerar", ["Banho morno", "5 min de respiração lenta", "Dormir"], AVISA]],
+  3: [["tribe", from, "21:00", "Vida pessoal", []], SUNSET],
+  4: [["tribe", from, "19:00", "Vida pessoal", []], ENGLISH, AFTER_ENGLISH, SUNSET],
+  5: [["tribe", from, "21:00", "Vida pessoal", []], SUNSET],
+})[weekday];
+
+// Quarta em casa, depois do Futsal: 45 min a mais de sono, Início curto e NSDR no almoço.
+const HOME_WEDNESDAY = [
+  ["wake", "07:15", "07:35", "Início", ["Água e 10 min de sol", "Mobilidade 5 min"], AVISA],
+  ["food", "07:35", "08:00", "Café da manhã", FOOD[4]],
+  DEEP, TRIAGE,
+  ["lunch", "12:00", "13:30", "Almoço", [...LUNCH[4], "20 min de NSDR"]],
+  VALLEY, EXEC_HOME,
+];
+
+const home = (wd) => [...(wd === 3 ? HOME_WEDNESDAY : HOME_DAY), trainHome(...TRAIN[wd]), ...evening(wd, "17:30")];
+const office = (wd) => [...officeDay(...TRAIN[wd], { lateWake: wd === 3 }), ...evening(wd, "17:45")];
+
+const SUNDAY = [
+  ["wake", "07:15", "08:00", "Início", ["Água e 10 min de sol", "Silêncio e oração", "Café rápido"], AVISA],
+  ["church", "08:00", "11:00", "Culto", [], AVISA],
+  ["free", "11:00", "12:00", "Tempo livre", []],
+  ["lunch", "12:00", "13:30", "Almoço", []],
+  ["rest", "13:30", "15:00", "Descanso", []],
+  ["family", "15:00", "17:00", "Lazer e família", ["16:15: prioridade de segunda"]],
+  train("Descanso ativo", ["Caminhada longa", "Alongamento 10 min"]),
+  ["church2", "19:00", "21:00", "Culto", [], AVISA],
+  SUNSET,
+];
+
+const SATURDAY = [
+  ["wake", "07:15", "07:35", "Início", ["Água e 10 min de sol", "Mobilidade + 60 s num pé só"], AVISA],
+  ["food", "07:35", "08:30", "Café da manhã", ["30 g de proteína"]],
+  ["study", "08:30", "11:30", "Estudos", ["Celular em outro cômodo", "90 min de prática com teste", "90 min de leitura profunda"], AVISA],
+  ["music", "11:30", "12:00", "Música", ["Ouvir seguindo um só instrumento"]],
+  ["lunch", "12:00", "13:30", "Almoço", []],
+  ["family", "13:30", "15:00", "Atividade em família", []],
+  ["hobby", "15:00", "17:00", "Hobbies", []],
+  train("Corrida · VO2 máx", ["Aquecer 10 min", "4 × 4 min forte, 4 min leve"]),
+  ["tribe", "18:30", "21:00", "Vida pessoal", []],
+  SUNSET,
+];
+
+/**
+ * As duas semanas, que se alternam (ver weekKind). Índice = dia da semana (0 = domingo).
+ * - "tq": presencial na terça e na quinta.
+ * - "sqs": presencial na segunda, na quarta e na sexta.
+ */
+const WEEKS = {
+  tq: [SUNDAY, home(1), office(2), home(3), office(4), home(5), SATURDAY],
+  sqs: [SUNDAY, office(1), home(2), office(3), home(4), office(5), SATURDAY],
+};
+
+export const WEEK_LABELS = { tq: "Presencial ter e qui", sqs: "Presencial seg, qua e sex" };
+
+/** Semana de referência: a que começa na segunda 2026-11-16 é "tq" (ajustável em Ajustes). */
+export const DEFAULT_WEEK_ANCHOR = "2026-11-16";
+
+/** Qual das duas semanas vale para o dia `key`, dada a segunda-feira de uma semana "tq". */
+export function weekKind(key, anchor = DEFAULT_WEEK_ANCHOR) {
+  const day = (k) => Date.UTC(...k.split("-").map((n, i) => (i === 1 ? n - 1 : +n)));
+  const monday = (k) => day(k) - ((new Date(day(k)).getUTCDay() + 6) % 7) * 86400000;
+  const weeks = Math.round((monday(key) - monday(anchor)) / (7 * 86400000));
+  return weeks % 2 === 0 ? "tq" : "sqs";
+}
+
+/** O dia `key` é presencial (com bike)? */
+export function isOfficeDay(key, anchor = DEFAULT_WEEK_ANCHOR) {
+  return WEEKS[weekKind(key, anchor)][weekdayOf(key)].some((b) => b[0] === "bike");
+}
+
 /** Despertar de referência dos horários da semana. */
 const BASE_WAKE = 6 * 60 + 30;
 /** Hora de definir a prioridade do dia seguinte (aviso e campo no bloco da tarde). */
-export const PLAN_AT = "16:45";
+export const PLAN_AT = "16:15";
 
 export const ANCHORS = [
   { id: "anchor1", title: "Início fixo", steps: "Acordar no horário · água · sol" },
@@ -169,8 +221,8 @@ export function minutesBetween(from, to) {
  * Devolve [{ id, start, end, title, steps, notify }] com start/end em minutos desde o despertar do ajuste,
  * por isso um dia que acorda mais tarde começa depois de 0.
  */
-export function buildSchedule(weekday = 1) {
-  return WEEK[weekday].map(([id, from, to, title, steps, notify = false]) => ({
+export function buildSchedule(weekday = 1, kind = "tq") {
+  return WEEKS[kind][weekday].map(([id, from, to, title, steps, notify = false]) => ({
     id, start: parseClock(from) - BASE_WAKE, end: parseClock(to) - BASE_WAKE, title, steps, notify,
   }));
 }

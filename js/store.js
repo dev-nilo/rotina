@@ -5,6 +5,8 @@ const KEY = "rotina.v2";
 
 export const DEFAULT_SETTINGS = {
   wake: 6 * 60 + 30,
+  // Segunda-feira de uma semana com presencial na terça e na quinta (ver weekKind em routine.js).
+  weekAnchor: "2026-11-16",
 };
 
 function fresh() {

@@ -5,17 +5,13 @@ baseada em cronobiologia, *O Milagre da Manhã*, *O Poder do Hábito*, *Behave*,
 e *A Sociedade do Cansaço*.
 
 - **Hoje**: o bloco de agora, com um check para o bloco inteiro e os passos só para ler.
-  A prioridade do dia aparece no Deep Work e é definida na véspera, às 16:45.
+  A prioridade do dia aparece no Deep Work e é definida na véspera, às 16:15.
   Num dia caótico, um link troca a agenda pelas 3 Âncoras.
 - **cat-modoro**: timer de foco (90/15) no Deep Work e nos Estudos.
-- **Semana padrão**: uma agenda por dia da semana, em `WEEK` (`js/routine.js`).
-  Feriados nacionais em dia útil seguem a rotina de sábado; dá para marcar ou desmarcar à mão.
-- **Capitão América** (`js/shape.js`): complemento da rotina, sem mexer na semana. Dentro dos blocos que já existem
-  aparecem os exercícios extras dos treinos de força (seg, qua, sex) com registro de carga e o marcador "Topo"
-  (dupla progressão), as quantidades das refeições, e no Início o peso diário com média de 7 dias (cintura às segundas).
-- **Climas de cor** (`js/climate.js`): a tela assume o clima do bloco atual (Despertar, Foco, Movimento,
-  Pessoal, Noite). Cada clima usa tons vizinhos na roda de cores, e o dia percorre o lado quente da roda;
-  a Noite não tem azul nem branco. Na lista do dia, cada bloco tem uma marca com a cor do seu clima.
+- **Duas semanas alternadas** (`WEEKS` em `js/routine.js`): uma com presencial na terça e na quinta, a outra na segunda,
+  quarta e sexta. Dia presencial tem bike de 15 km na ida e na volta e treino ao meio-dia; em casa, treino às 16:30.
+  O treino de cada dia da semana é o mesmo nas duas (perna sempre na quarta). English Club seg, ter e qui às 19h; Futsal ter às 21h.
+  Em Ajustes dá para inverter a semana atual. Feriados nacionais em dia útil seguem a rotina de sábado; dá para marcar ou desmarcar à mão.
 - **Ajustes**: horário de acordar (desloca a semana inteira), avisos e a chave do assistente.
 
 Os dados ficam no aparelho (localStorage). Com os avisos ligados, os horários dos próximos

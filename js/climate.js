@@ -5,7 +5,8 @@
 const CLIMATE_OF = {
   wake: "despertar", food: "despertar",
   deep: "foco", study: "foco", triage: "foco", valley: "foco", exec: "foco",
-  train: "movimento", society: "movimento", futsal: "movimento",
+  train: "movimento", bike: "movimento", bike2: "movimento", society: "movimento", futsal: "movimento",
+  english: "foco",
   sunset: "noite",
 };
 

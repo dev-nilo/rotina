@@ -1,6 +1,7 @@
 import {
   ANCHORS, PRINCIPLES, AWAKE_SPAN, PLAN_AT,
   holidayName, momentAt, clock, parseClock, duration, minutesBetween, weekdayOf,
+  weekKind, isOfficeDay, WEEK_LABELS,
 } from "./routine.js";
 import {
   state, save, now, day, dayKey, peekDay, toggleDone, isDone, getApiKey, setApiKey,
@@ -109,7 +110,7 @@ function checkButton(action, id, done, label) {
   return `<button class="check ${done ? "done" : ""} ${id === popped ? "pop" : ""}" data-action="${action}" data-id="${id}" aria-label="${done ? "Desmarcar" : "Marcar"} ${esc(label)}">${done ? icon("check") : ""}</button>`;
 }
 
-/** Prioridade de um dia (`key`): definida na véspera, às 16:45, e lida no Deep Work. */
+/** Prioridade de um dia (`key`): definida na véspera, às 16:15, e lida no Deep Work. */
 function focusField(key, label) {
   return `<section class="focus">
       <span class="eyebrow">${esc(label)}</span>
@@ -160,9 +161,12 @@ function routineWeekday(key) {
   return isHoliday(key) && wd >= 1 && wd <= 5 ? 6 : wd;
 }
 
+/** Dia presencial (com bike)? Feriado segue o sábado, então não. */
+const officeOn = (key) => routineWeekday(key) === weekdayOf(key) && isOfficeDay(key, state.settings.weekAnchor);
+
 /** O que o plano Capitão América soma a este bloco. Vazio se nada. */
 function extrasPanel(b, key) {
-  const x = shape.extrasFor(b, routineWeekday(key));
+  const x = shape.extrasFor(b, routineWeekday(key), officeOn(key));
   if (!x) return "";
   return `<div class="cap">
       <span class="eyebrow">Capitão América</span>
@@ -172,7 +176,7 @@ function extrasPanel(b, key) {
     </div>`;
 }
 
-const hasExtras = (b, key) => !!shape.extrasFor(b, routineWeekday(key));
+const hasExtras = (b, key) => !!shape.extrasFor(b, routineWeekday(key), officeOn(key));
 
 /** Blocos com o cat-modoro: os de foco longo. */
 const FOCUS_BLOCKS = ["deep", "study"];
@@ -203,7 +207,7 @@ function catInline() {
 }
 
 /**
- * Onde mostrar a prioridade no cartão: a de hoje no Deep Work; a de amanhã a partir das 16:45,
+ * Onde mostrar a prioridade no cartão: a de hoje no Deep Work; a de amanhã a partir das 16:15,
  * no bloco da tarde (Execução; no domingo, Lazer e família).
  */
 function priorityField(b, mo) {
@@ -391,6 +395,10 @@ function settingsScreen() {
       <div class="field"><span>Dormir às</span><span class="muted num">${clock(AWAKE_SPAN, s.wake)}</span></div>
       <p class="hint">Nos dias úteis. Na quarta, depois do Futsal, e no fim de semana, 45 min depois. A semana inteira se desloca junto.</p>
     </section>
+    <section class="form">
+      <div class="field"><span>Esta semana</span><button class="btn small-btn" data-action="week-flip">${WEEK_LABELS[weekKind(dayKey(), s.weekAnchor)]}</button></div>
+      <p class="hint">As semanas se alternam: presencial ter e qui, depois seg, qua e sex. Nos dias presenciais, bike de 15 km na ida e na volta e treino ao meio-dia; em casa, treino às 16:30. Toque para trocar se a semana estiver invertida.</p>
+    </section>
     ${pushSection(standalone)}
     <section class="form">
       ${getApiKey()
@@ -419,9 +427,9 @@ function pushSection(standalone) {
   return `<section class="form">
       ${state.push
         ? `<div class="field"><span>Avisos</span><button class="btn small-btn" data-action="push-off">Desligar</button></div>
-           <p class="hint">Aviso nas trocas de bloco, às 16:45 para a prioridade de amanhã e no fim do cat-modoro. Nos dias caóticos, só o cat-modoro.</p>`
+           <p class="hint">Aviso nas trocas de bloco, às 16:15 para a prioridade de amanhã e no fim do cat-modoro. Nos dias caóticos, só o cat-modoro.</p>`
         : `<button class="btn primary wide" data-action="push-on">Ativar avisos</button>
-           <p class="hint">Aviso nas trocas de bloco, às 16:45 para a prioridade de amanhã e no fim do cat-modoro, mesmo com o app fechado.</p>`}
+           <p class="hint">Aviso nas trocas de bloco, às 16:15 para a prioridade de amanhã e no fim do cat-modoro, mesmo com o app fechado.</p>`}
       ${pushError ? `<p class="hint warn">${esc(pushError)}</p>` : ""}
     </section>`;
 }
@@ -628,6 +636,13 @@ app.addEventListener("click", (e) => {
     case "ai-undo":
       day(viewing()).ops = [];
       break;
+    case "week-flip": {
+      // Desloca a semana de referência em 7 dias: a semana atual troca de tipo e as seguintes acompanham.
+      const d = new Date(`${state.settings.weekAnchor}T12:00:00`);
+      d.setDate(d.getDate() + 7);
+      state.settings.weekAnchor = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      break;
+    }
     case "remove-key":
       setApiKey("");
       break;

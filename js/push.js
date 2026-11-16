@@ -16,7 +16,7 @@ export const supported = () => "PushManager" in window && "serviceWorker" in nav
 
 /**
  * Avisos de hoje e dos próximos dias (menos nos dias caóticos): início dos blocos que
- * marcam uma troca de modo (`notify`), a prioridade de amanhã às 16:45 e o fim de cada
+ * marcam uma troca de modo (`notify`), a prioridade de amanhã às 16:15 e o fim de cada
  * fase do cat-modoro. Inclui os já passados de hoje para a lista só mudar quando a
  * rotina muda, e não a cada minuto.
  */

@@ -7,60 +7,75 @@
 import { state, save, dayKey } from "./store.js";
 
 /**
- * Exercícios por dia da semana (0 = domingo), só nos três dias de força.
+ * Exercícios por dia da semana (0 = domingo), iguais nas duas semanas (ver TRAIN em routine.js).
  * base: já está nos passos do bloco (só ganha o registro de carga).
  * Faixa de reps: dupla progressão — fechou o topo em todas as séries, sobe a carga.
+ * Os ids guardam o histórico de carga: o mesmo exercício usa o mesmo id em qualquer dia.
  */
 const TRAIN = {
   1: [
-    { id: "supino-halter", name: "Supino com halteres", sets: 3, reps: "8", base: true },
-    { id: "remada-curvada", name: "Remada curvada", sets: 3, reps: "8", base: true },
-    { id: "supino-inclinado", name: "Supino inclinado", sets: 3, reps: "8–10" },
+    { id: "supino-inclinado", name: "Supino inclinado", sets: 3, reps: "8–10", base: true },
+    { id: "remada-curvada", name: "Remada curvada", sets: 3, reps: "8–12", base: true },
+    { id: "lateral", name: "Elevação lateral", sets: 3, reps: "12–20", base: true },
     { id: "puxada", name: "Puxada aberta", sets: 3, reps: "8–12" },
-    { id: "lateral-seg", name: "Elevação lateral", sets: 3, reps: "12–20" },
-    { id: "rosca-direta", name: "Rosca direta + tríceps corda", sets: 2, reps: "10–12" },
+    { id: "crossover", name: "Crossover de baixo pra cima", sets: 2, reps: "12–15" },
+    { id: "rosca-direta", name: "Rosca direta", sets: 2, reps: "10–12" },
+  ],
+  2: [
+    { id: "lateral", name: "Elevação lateral", sets: 3, reps: "15–20", base: true },
+    { id: "rosca-direta", name: "Rosca direta", sets: 2, reps: "12", base: true },
+    { id: "triceps", name: "Tríceps corda", sets: 2, reps: "12", base: true },
+    { id: "face-pull", name: "Face pull", sets: 2, reps: "15" },
   ],
   3: [
+    { id: "agachamento", name: "Agachamento livre", sets: 3, reps: "6–8", base: true },
     { id: "terra-romeno", name: "Terra romeno", sets: 3, reps: "8", base: true },
-    { id: "farmer", name: "Farmer's walk", sets: 4, reps: "30 m", base: true },
-    { id: "barra-fixa", name: "Barra fixa (ou puxada)", sets: 3, reps: "6–10" },
-    { id: "desenvolvimento-qua", name: "Desenvolvimento com halteres", sets: 3, reps: "8–10" },
-    { id: "lateral-qua", name: "Elevação lateral", sets: 3, reps: "12–20" },
+    { id: "bulgaro", name: "Afundo búlgaro", sets: 3, reps: "8", base: true },
+    { id: "panturrilha", name: "Panturrilha em pé", sets: 3, reps: "12–15" },
+  ],
+  4: [
+    { id: "barra-fixa", name: "Barra fixa (ou puxada)", sets: 3, reps: "6–10", base: true },
+    { id: "supino-reto", name: "Supino reto", sets: 3, reps: "8–10", base: true },
+    { id: "desenvolvimento", name: "Desenvolvimento com halteres", sets: 3, reps: "8–10", base: true },
+    { id: "remada-baixa", name: "Remada baixa", sets: 3, reps: "10–12" },
+    { id: "lateral", name: "Elevação lateral", sets: 3, reps: "12–20" },
     { id: "rosca-martelo", name: "Rosca martelo", sets: 2, reps: "12" },
   ],
   5: [
-    { id: "agachamento", name: "Agachamento livre", sets: 3, reps: "6", base: true },
-    { id: "bulgaro", name: "Afundo búlgaro", sets: 3, reps: "8", base: true },
-    { id: "desenvolvimento-sex", name: "Desenvolvimento", sets: 3, reps: "8", base: true },
-    { id: "supino-reto", name: "Supino reto", sets: 3, reps: "8–10" },
-    { id: "remada-sex", name: "Remada (máquina ou cabo)", sets: 3, reps: "10–12" },
-    { id: "lateral-sex", name: "Elevação lateral", sets: 3, reps: "12–20" },
-    { id: "triceps", name: "Tríceps corda ou testa", sets: 2, reps: "12" },
+    { id: "desenvolvimento-maq", name: "Desenvolvimento na máquina", sets: 3, reps: "8–12", base: true },
+    { id: "lateral", name: "Elevação lateral", sets: 4, reps: "12–20", base: true },
+    { id: "rosca-direta", name: "Rosca direta", sets: 3, reps: "10–12", base: true },
+    { id: "triceps", name: "Tríceps corda", sets: 3, reps: "10–12", base: true },
+    { id: "crucifixo-invertido", name: "Crucifixo invertido", sets: 3, reps: "12–15" },
+    { id: "rosca-martelo", name: "Rosca martelo", sets: 2, reps: "12" },
   ],
 };
 
-/** Dias de cardio forte: mais carboidrato. */
-const CARB_DAYS = new Set([4, 6]); // quinta (zona 2) e sábado (VO2 máx)
-
 const PRATO = "150–180 g de proteína · 4–5 colheres de arroz + 1 concha de feijão · salada à vontade";
 
-/** Quantidades das refeições, presas a blocos que já existem. Devolve linhas de texto. */
-function foodLines(blockId, weekday) {
-  const carb = CARB_DAYS.has(weekday);
-  const lines = {
+/**
+ * Quantidades das refeições, presas a blocos que já existem. Devolve linhas de texto.
+ * Dia presencial = 30 km de bike: uns 500 kcal a mais, em carboidrato e num lanche extra.
+ */
+function foodLines(blockId, weekday, office) {
+  if (blockId === "wake" && weekday === 0) return ["Café: 3 ovos + 2 pães + 1 fruta"]; // domingo não tem bloco de café
+  if (blockId === "hobby") return ["16:30 · vitamina antes da corrida"]; // sábado
+  if (office) {
+    return {
+      food: ["3 ovos + 2 pães + 1 fruta, antes de pedalar"],
+      triage: ["11:30 · pré-treino: 1 banana + 1 pão"],
+      lunch: [`Marmita: ${PRATO}`, "Dia de bike: +100 g de arroz"],
+      exec: ["16:30 · lanche antes da volta: pão com frango ou a vitamina"],
+      tribe: [`Jantar: ${PRATO}`, "Dia de bike: +2 colheres de arroz"],
+    }[blockId] ?? [];
+  }
+  return {
     food: ["3 ovos + 2 pães + 1 fruta"],
-    lunch: [PRATO, ...(carb ? ["Dia de cardio forte: +100 g de arroz"] : [])],
-    exec: ["16:00 · vitamina: 2 bananas + 1 scoop de whey + 40 g de aveia + 300 ml de leite"],
-    // Segunda: o bloco é o lanche pré-jogo e o jantar leve fica no Desacelerar.
-    tribe: weekday === 1 ? ["Lanche: pão com ovo ou frango"] : [`Jantar: ${PRATO}`],
-    sunset: weekday === 1 ? ["Jantar leve: 150 g de proteína + 2–3 colheres de arroz"] : [],
+    lunch: [PRATO, ...(weekday === 6 ? ["Dia de corrida: +100 g de arroz"] : [])],
+    exec: ["15:45 · vitamina: 2 bananas + 1 scoop de whey + 40 g de aveia + 300 ml de leite"],
+    tribe: [`Jantar: ${PRATO}`],
     church2: [`Depois do culto, jantar: ${PRATO}`],
-  };
-  // Domingo não tem bloco de café: vai no Início.
-  if (blockId === "wake" && weekday === 0) return ["Café: 3 ovos + 2 pães + 1 fruta"];
-  // Sábado: vitamina antes do VO2 máx, no bloco de hobbies.
-  if (blockId === "hobby") return ["16:30 · vitamina antes do VO2 máx"];
-  return lines[blockId] ?? [];
+  }[blockId] ?? [];
 }
 
 function data() {
@@ -69,11 +84,11 @@ function data() {
 }
 
 /** O complemento de um bloco: { train?, food?, weigh? } ou null se não houver nada. */
-export function extrasFor(block, weekday) {
+export function extrasFor(block, weekday, office = false) {
   if (block.changed) return null; // bloco ajustado pelo assistente: vale o ajuste
   const out = {};
   if (block.id === "train" && TRAIN[weekday]) out.train = TRAIN[weekday];
-  const food = foodLines(block.id, weekday);
+  const food = foodLines(block.id, weekday, office);
   if (food.length) out.food = food;
   if (block.id === "wake") out.weigh = { waist: weekday === 1 };
   return Object.keys(out).length ? out : null;
