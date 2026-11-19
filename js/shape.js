@@ -51,28 +51,30 @@ const TRAIN = {
   ],
 };
 
-const PRATO = "150–180 g de proteína · 4–5 colheres de arroz + 1 concha de feijão · salada à vontade";
+// Fibra (meta ~30–35 g/dia): feijão e metade do prato em verdura, pão integral, aveia e 2 frutas.
+// Os AGCC (ácidos graxos de cadeia curta) vêm da fermentação dessa fibra no intestino.
+const PRATO = "150–180 g de proteína · 4–5 colheres de arroz + 1 concha de feijão · metade do prato em verdura ou salada";
 
 /**
  * Quantidades das refeições, presas a blocos que já existem. Devolve linhas de texto.
  * Dia presencial = 30 km de bike: uns 500 kcal a mais, em carboidrato e num lanche extra.
  */
 function foodLines(blockId, weekday, office) {
-  if (blockId === "wake" && weekday === 0) return ["Café: 3 ovos + 2 pães + 1 fruta"]; // domingo não tem bloco de café
+  if (blockId === "wake" && weekday === 0) return ["Café: 3 ovos + 2 pães integrais + 1 fruta"]; // domingo não tem bloco de café
   if (blockId === "hobby") return ["16:30 · vitamina antes da corrida"]; // sábado
   if (office) {
     return {
-      food: ["3 ovos + 2 pães + 1 fruta, antes de pedalar"],
+      food: ["3 ovos + 2 pães integrais + 1 fruta, antes de pedalar"],
       triage: ["11:30 · pré-treino: 1 banana + 1 pão"],
       lunch: [`Marmita: ${PRATO}`, "Dia de bike: +100 g de arroz"],
-      exec: ["16:30 · lanche antes da volta: pão com frango ou a vitamina"],
+      exec: ["16:30 · lanche antes da volta: pão integral com frango ou a vitamina · 2ª fruta do dia"],
       tribe: [`Jantar: ${PRATO}`, "Dia de bike: +2 colheres de arroz"],
     }[blockId] ?? [];
   }
   return {
-    food: ["3 ovos + 2 pães + 1 fruta"],
+    food: ["3 ovos + 2 pães integrais + 1 fruta"],
     lunch: [PRATO, ...(weekday === 6 ? ["Dia de corrida: +100 g de arroz"] : [])],
-    exec: ["15:45 · vitamina: 2 bananas + 1 scoop de whey + 40 g de aveia + 300 ml de leite"],
+    exec: ["15:45 · vitamina: 2 bananas + 1 scoop de whey + 40 g de aveia + 300 ml de leite (a aveia é a fibra da tarde)"],
     tribe: [`Jantar: ${PRATO}`],
     church2: [`Depois do culto, jantar: ${PRATO}`],
   }[blockId] ?? [];
